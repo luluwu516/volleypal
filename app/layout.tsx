@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { Toaster } from "@/components/ui/sonner";
+import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,14 +21,25 @@ export const metadata: Metadata = {
   title: "VolleyPal",
   description: "Tournament tracker for our annual volleyball get-together",
   applicationName: "VolleyPal",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent" },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "VolleyPal",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#020617",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  userScalable: false,
 };
 
 export default async function RootLayout({
@@ -53,6 +65,7 @@ export default async function RootLayout({
           </main>
           <BottomNav isAdmin={isAdmin} />
           <Toaster richColors theme="dark" />
+          <RegisterServiceWorker />
         </ThemeProvider>
       </body>
     </html>

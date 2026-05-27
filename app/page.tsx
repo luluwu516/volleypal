@@ -161,7 +161,7 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
                 <AccordionTrigger className="px-4">
                   <span className="flex items-center gap-2">
                     <Bus className="size-4 text-purple-400" />
-                    交通
+                    場館交通
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 flex flex-col gap-3">
@@ -220,14 +220,7 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
             <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
               食物選擇
             </h2>
-            <Accordion
-              type="single"
-              collapsible
-              defaultValue={
-                tournament.dinner_venue_name ? "dinner" : undefined
-              }
-              className="rounded-lg border"
-            >
+            <Accordion type="single" collapsible className="rounded-lg border">
               <AccordionItem value="dinner">
                 <AccordionTrigger className="px-4">
                   <span className="flex items-center gap-2">

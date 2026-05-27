@@ -8,12 +8,11 @@ const Body = z.discriminatedUnion("action", [
     action: z.literal("bump"),
     side: z.enum(["a", "b"]),
     delta: z.number().int().min(-3).max(3),
-    setNo: z.number().int().min(1).max(7),
+    setNo: z.number().int().min(1).max(3),
   }),
-  z.object({ action: z.literal("next_set"), setNo: z.number().int().min(1).max(6) }),
   z.object({
-    action: z.literal("set",),
-    setNo: z.number().int().min(1).max(7),
+    action: z.literal("set"),
+    setNo: z.number().int().min(1).max(3),
     scoreA: z.number().int().min(0).max(99),
     scoreB: z.number().int().min(0).max(99),
   }),
@@ -92,26 +91,6 @@ export async function POST(
         score_b: body.scoreB,
       });
     if (error) throw error;
-  } else if (body.action === "next_set") {
-    // Mark current set as finished, insert next set with 0-0
-    const current = sets.find((s) => s.set_no === body.setNo);
-    if (current && !current.finished_at) {
-      await db
-        .from("match_sets")
-        .update({ finished_at: new Date().toISOString() })
-        .eq("match_id", matchId)
-        .eq("set_no", body.setNo);
-    }
-    const nextNo = body.setNo + 1;
-    if (!sets.find((s) => s.set_no === nextNo)) {
-      const { error } = await db.from("match_sets").insert({
-        match_id: matchId,
-        set_no: nextNo,
-        score_a: 0,
-        score_b: 0,
-      });
-      if (error) throw error;
-    }
   }
 
   // Audit

@@ -17,7 +17,6 @@ const Body = z.object({
   waiver_url: z.string().url().nullable().optional().or(z.literal("")),
   venue_address: z.string().nullable().optional(),
   venue_transport: z.string().nullable().optional(),
-  venue_parking: z.string().nullable().optional(),
   venue_nearby: z.string().nullable().optional(),
   venue_lunch_options: z.string().nullable().optional(),
   venue_drink_options: z.string().nullable().optional(),

@@ -42,7 +42,6 @@ export interface Tournament {
   waiver_url: string | null;
   venue_address: string | null;
   venue_transport: string | null;
-  venue_parking: string | null;
   venue_nearby: string | null;
   venue_lunch_options: string | null;
   venue_drink_options: string | null;

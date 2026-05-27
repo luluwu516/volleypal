@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { advanceBracketAfterFinish } from "@/lib/autoFillKnockout";
 
 const Body = z.object({
   status: z.enum(["pending", "live", "finished"]),
@@ -55,6 +56,12 @@ export async function POST(
 
   const { error } = await db.from("matches").update(patch).eq("id", matchId);
   if (error) throw error;
+
+  // Advance the bracket: fill semifinals from group standings, then
+  // finals/3rd-place from semis once they finish. Best-effort, logs on error.
+  if (body.status === "finished") {
+    await advanceBracketAfterFinish(db, match.tournament_id, match.phase);
+  }
 
   // Knockout referee chain: when a knockout match finishes, the loser
   // becomes the referee of the next pending knockout match in the same
