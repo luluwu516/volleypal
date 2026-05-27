@@ -153,7 +153,7 @@ function removeExistingFormTriggers_() {
  * file is self-contained.
  */
 function onFormSubmit(e) {
-  if (!e || !e.namedValues) {
+  if (!e) {
     throw new Error(
       'onFormSubmit must be invoked by a form-submit trigger, not Run-in-editor. ' +
       'Submit the live form once, or run `testOnFormSubmit` for a mocked call.'
@@ -167,7 +167,11 @@ function onFormSubmit(e) {
     throw new Error('Missing script properties');
   }
 
-  var responses = e.namedValues || {};
+  var responses = extractResponses_(e);
+  if (Object.keys(responses).length === 0) {
+    Logger.log('onFormSubmit got empty responses; event keys: ' +
+               Object.keys(e).join(','));
+  }
   var payload = {
     tournament_id: tournamentId,
     submitted_at: new Date().toISOString(),
@@ -237,6 +241,29 @@ function logError_(payload, message) {
   } catch (e) {
     Logger.log('error logging failed: ' + e);
   }
+}
+
+/**
+ * Returns a {key: [value]} map of form responses.
+ *
+ * Form triggers (`forForm().onFormSubmit()`) deliver `e.response`
+ * (FormResponse). Spreadsheet triggers deliver `e.namedValues`. Support both
+ * so the script works no matter how the trigger was installed.
+ */
+function extractResponses_(e) {
+  if (e.namedValues) return e.namedValues;
+  if (e.response && typeof e.response.getItemResponses === 'function') {
+    var out = {};
+    var itemResponses = e.response.getItemResponses();
+    for (var i = 0; i < itemResponses.length; i++) {
+      var ir = itemResponses[i];
+      var title = ir.getItem().getTitle();
+      var resp = ir.getResponse();
+      out[title] = Array.isArray(resp) ? resp.map(String) : [String(resp)];
+    }
+    return out;
+  }
+  return {};
 }
 
 function getResponsesSheet_() {

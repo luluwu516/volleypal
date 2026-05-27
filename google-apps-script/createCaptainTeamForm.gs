@@ -137,7 +137,7 @@ function removeExistingFormTriggers_() {
  * admin 之後可以依「隊伍名稱」分組建 team。
  */
 function onFormSubmit(e) {
-  if (!e || !e.namedValues) {
+  if (!e) {
     throw new Error(
       'onFormSubmit must be invoked by a form-submit trigger, not Run-in-editor. ' +
       'Submit the live form once, or run `testOnFormSubmit` for a mocked call.'
@@ -151,7 +151,11 @@ function onFormSubmit(e) {
     throw new Error('Missing script properties');
   }
 
-  var r = e.namedValues || {};
+  var r = extractResponses_(e);
+  if (Object.keys(r).length === 0) {
+    Logger.log('onFormSubmit got empty responses; event keys: ' +
+               Object.keys(e).join(','));
+  }
   var teamName = pick_(r, '隊伍名稱');
   var dinner = pick_(r, '賽後聚餐意願');
 
@@ -283,6 +287,26 @@ function logError_(payload, message) {
   } catch (err) {
     Logger.log('error logging failed: ' + err);
   }
+}
+
+/**
+ * Returns a {key: [value]} map of form responses, supporting both form and
+ * spreadsheet trigger event shapes.
+ */
+function extractResponses_(e) {
+  if (e.namedValues) return e.namedValues;
+  if (e.response && typeof e.response.getItemResponses === 'function') {
+    var out = {};
+    var itemResponses = e.response.getItemResponses();
+    for (var i = 0; i < itemResponses.length; i++) {
+      var ir = itemResponses[i];
+      var title = ir.getItem().getTitle();
+      var resp = ir.getResponse();
+      out[title] = Array.isArray(resp) ? resp.map(String) : [String(resp)];
+    }
+    return out;
+  }
+  return {};
 }
 
 function getResponsesSheet_() {
