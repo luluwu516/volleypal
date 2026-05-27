@@ -122,6 +122,9 @@ function createVolleyPalForm() {
   var ssName = FORM_TITLE + ' — 回應';
   var ss = SpreadsheetApp.create(ssName);
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
+  // Save the spreadsheet ID so the error logger can openById() — the trigger
+  // runs in a standalone script context where getActiveSpreadsheet() is null.
+  props.setProperty('RESPONSES_SHEET_ID', ss.getId());
 
   Logger.log('=== VolleyPal form created ===');
   Logger.log('Public URL (share with participants):');
@@ -191,6 +194,10 @@ function onFormSubmit(e) {
     }
     Utilities.sleep(1000 * (attempt + 1));
   }
+  // Always log to Executions first so the error is visible even if the
+  // spreadsheet write below fails.
+  Logger.log('form-webhook failed after 3 attempts: ' + lastErr);
+  Logger.log('payload was: ' + JSON.stringify(payload));
   logError_(payload, lastErr);
 }
 
@@ -220,11 +227,30 @@ function testOnFormSubmit() {
 
 function logError_(payload, message) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) return;
+    var ss = getResponsesSheet_();
+    if (!ss) {
+      Logger.log('logError_: no spreadsheet available; see Executions log above');
+      return;
+    }
     var sheet = ss.getSheetByName('_errors') || ss.insertSheet('_errors');
     sheet.appendRow([new Date(), message, JSON.stringify(payload)]);
   } catch (e) {
     Logger.log('error logging failed: ' + e);
   }
+}
+
+function getResponsesSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) return ss;
+  var id = PropertiesService.getScriptProperties().getProperty(
+    'RESPONSES_SHEET_ID',
+  );
+  if (id) {
+    try {
+      return SpreadsheetApp.openById(id);
+    } catch (e) {
+      Logger.log('openById failed: ' + e);
+    }
+  }
+  return null;
 }

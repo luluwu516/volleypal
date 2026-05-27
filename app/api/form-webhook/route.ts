@@ -128,23 +128,24 @@ export async function POST(req: Request) {
   try {
     body = Body.parse(await req.json());
   } catch (e) {
-    return NextResponse.json(
-      { stage: "parse", error: e instanceof Error ? e.message : "invalid body" },
-      { status: 400 },
-    );
+    const out = {
+      stage: "parse",
+      error: e instanceof Error ? e.message : "invalid body",
+    };
+    console.warn("form-webhook 400", out);
+    return NextResponse.json(out, { status: 400 });
   }
 
   const r = normalizeResponses(body.responses as Record<string, unknown>);
   const name = pick(r, ["name", "姓名"]);
   if (!name) {
-    return NextResponse.json(
-      {
-        stage: "extract",
-        error: "missing name field",
-        responseKeys: Object.keys(r),
-      },
-      { status: 400 },
-    );
+    const out = {
+      stage: "extract",
+      error: "missing name field",
+      responseKeys: Object.keys(r),
+    };
+    console.warn("form-webhook 400", out);
+    return NextResponse.json(out, { status: 400 });
   }
 
   const birthdayRaw = pick(r, ["birthday", "生日", "dob"]);
@@ -173,11 +174,16 @@ export async function POST(req: Request) {
           .upsert(row, { onConflict: "tournament_id,email" })
       : await db.from("registrations").insert(row);
     if (error) {
-      console.error("form-webhook db error", error);
-      return NextResponse.json(
-        { stage: "db", error: error.message, code: error.code, hint: error.hint },
-        { status: 400 },
-      );
+      const out = {
+        stage: "db",
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+        attempted_row: row,
+      };
+      console.error("form-webhook 400 db", out);
+      return NextResponse.json(out, { status: 400 });
     }
     return NextResponse.json({
       ok: true,

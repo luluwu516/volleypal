@@ -112,6 +112,7 @@ function createCaptainTeamForm() {
 
   var ss = SpreadsheetApp.create(FORM_TITLE + ' — 回應');
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
+  props.setProperty('RESPONSES_SHEET_ID', ss.getId());
 
   Logger.log('=== Captain team form created ===');
   Logger.log('Public URL: ' + form.getPublishedUrl());
@@ -200,9 +201,14 @@ function onFormSubmit(e) {
     if (!ok) failures.push(p.name + ' (' + p.role + ')');
   }
   if (failures.length > 0) {
+    var msg = 'Failed to register: ' + failures.join(', ');
+    Logger.log(msg);
+    Logger.log('team payload was: ' + JSON.stringify({
+      teamName: teamName, players: players,
+    }));
     logError_(
       { teamName: teamName, players: players },
-      'Failed to register: ' + failures.join(', ')
+      msg,
     );
   }
 }
@@ -224,16 +230,20 @@ function postWithRetry_(url, secret, payload) {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
+  var lastBody = null;
+  var lastCode = null;
   for (var attempt = 0; attempt < 3; attempt++) {
     try {
       var res = UrlFetchApp.fetch(url, options);
-      var code = res.getResponseCode();
-      if (code >= 200 && code < 300) return true;
+      lastCode = res.getResponseCode();
+      lastBody = res.getContentText();
+      if (lastCode >= 200 && lastCode < 300) return true;
     } catch (err) {
-      // retry
+      lastBody = String(err);
     }
     Utilities.sleep(500 * (attempt + 1));
   }
+  Logger.log('webhook POST failed (HTTP ' + lastCode + '): ' + lastBody);
   return false;
 }
 
@@ -263,11 +273,30 @@ function testOnFormSubmit() {
 
 function logError_(payload, message) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) return;
+    var ss = getResponsesSheet_();
+    if (!ss) {
+      Logger.log('logError_: no spreadsheet available; see Executions log above');
+      return;
+    }
     var sheet = ss.getSheetByName('_errors') || ss.insertSheet('_errors');
     sheet.appendRow([new Date(), message, JSON.stringify(payload)]);
   } catch (err) {
     Logger.log('error logging failed: ' + err);
   }
+}
+
+function getResponsesSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) return ss;
+  var id = PropertiesService.getScriptProperties().getProperty(
+    'RESPONSES_SHEET_ID',
+  );
+  if (id) {
+    try {
+      return SpreadsheetApp.openById(id);
+    } catch (e) {
+      Logger.log('openById failed: ' + e);
+    }
+  }
+  return null;
 }
