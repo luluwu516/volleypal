@@ -35,6 +35,70 @@ describe("roundRobinPairs", () => {
   });
 });
 
+describe("referee assignment (2 courts)", () => {
+  it("assigns a referee to every group match", () => {
+    const matches = scheduleGroupStage(makeInput(2));
+    expect(matches.length).toBe(12);
+    matches.forEach((m) => {
+      expect(m.refereeTeamId).toBeTruthy();
+    });
+  });
+
+  it("never assigns a playing team as the referee of its own slot", () => {
+    const matches = scheduleGroupStage(makeInput(2));
+    const bySlot = new Map<string, typeof matches>();
+    for (const m of matches) {
+      const k = m.scheduledAt.toISOString();
+      bySlot.set(k, [...(bySlot.get(k) ?? []), m]);
+    }
+    for (const slotMatches of bySlot.values()) {
+      const playing = new Set<string>();
+      slotMatches.forEach((m) => {
+        if (m.teamAId) playing.add(m.teamAId);
+        if (m.teamBId) playing.add(m.teamBId);
+      });
+      slotMatches.forEach((m) => {
+        expect(playing.has(m.refereeTeamId!)).toBe(false);
+      });
+    }
+  });
+
+  it("never assigns two matches in the same slot to the same referee", () => {
+    const matches = scheduleGroupStage(makeInput(2));
+    const bySlot = new Map<string, typeof matches>();
+    for (const m of matches) {
+      const k = m.scheduledAt.toISOString();
+      bySlot.set(k, [...(bySlot.get(k) ?? []), m]);
+    }
+    for (const slotMatches of bySlot.values()) {
+      const refs = slotMatches.map((m) => m.refereeTeamId);
+      expect(new Set(refs).size).toBe(refs.length);
+    }
+  });
+
+  it("rotates referees — avoids same team back-to-back when possible", () => {
+    const matches = scheduleGroupStage(makeInput(2));
+    const slots = [
+      ...new Set(matches.map((m) => m.scheduledAt.toISOString())),
+    ].sort();
+    let prevRefs = new Set<string>();
+    let consecutive = 0;
+    for (const slot of slots) {
+      const slotRefs = new Set(
+        matches
+          .filter((m) => m.scheduledAt.toISOString() === slot)
+          .map((m) => m.refereeTeamId as string),
+      );
+      for (const r of slotRefs) if (prevRefs.has(r)) consecutive++;
+      prevRefs = slotRefs;
+    }
+    // In a 12-match / 2-court schedule (6 slots, 2 refs/slot = 12 ref
+    // assignments) with 8 teams, the rotation should comfortably keep
+    // consecutive-ref reuse low.
+    expect(consecutive).toBeLessThanOrEqual(2);
+  });
+});
+
 describe("scheduleGroupStage", () => {
   it("produces 12 matches total (6 per group)", () => {
     const matches = scheduleGroupStage(makeInput(2));

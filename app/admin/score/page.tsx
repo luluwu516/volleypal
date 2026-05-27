@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/repository";
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/nav/BackLink";
+import { fmtDateTime } from "@/lib/formatTime";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +42,7 @@ export default async function ScoreListPage() {
             <p className="text-xs text-muted-foreground">
               {m.phase}
               {m.group_label ? ` ${m.group_label}` : ""} · Court {m.court ?? "?"}
-              {m.scheduled_at &&
-                ` · ${new Date(m.scheduled_at).toLocaleString([], {
-                  month: "numeric",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}`}
+              {m.scheduled_at && ` · ${fmtDateTime(m.scheduled_at)}`}
             </p>
           </div>
           <Badge

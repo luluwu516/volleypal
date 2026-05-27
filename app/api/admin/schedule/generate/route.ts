@@ -32,14 +32,17 @@ export async function POST(req: Request) {
     );
   }
 
-  // Assign first 4 (by seed) to group A, next 4 to group B. Snake-ish: 1,4,5,8 vs 2,3,6,7
-  // For zodiac mode this groups 火A/火B/土A/土B vs 風A/風B/水A/水B - rough but acceptable
-  // and admin can manually adjust the team rows' group assignment later if needed.
+  // Snake-draft seeds into groups so that:
+  //   - same-element sub-teams (e.g. 土象 A / 土象 B) end up in different groups,
+  //   - the two groups don't play symmetric mirror matchups
+  //     (avoids the "土象A vs 水象A" + "土象B vs 水象B" pattern in parallel courts).
+  // Seeds 1-8 -> A B B A A B B A
   const groupA: SchedulerTeam[] = [];
   const groupB: SchedulerTeam[] = [];
+  const SNAKE = ["A", "B", "B", "A", "A", "B", "B", "A"] as const;
   teams.forEach((t, i) => {
-    const arr = i % 2 === 0 ? groupA : groupB;
-    arr.push({ id: t.id, groupLabel: arr === groupA ? "A" : "B" });
+    const label = SNAKE[i] ?? (i % 2 === 0 ? "A" : "B");
+    (label === "A" ? groupA : groupB).push({ id: t.id, groupLabel: label });
   });
 
   const schedule = buildFullSchedule({
@@ -67,6 +70,7 @@ export async function POST(req: Request) {
       team_b_id: m.teamBId,
       team_a_source: m.teamASource ?? null,
       team_b_source: m.teamBSource ?? null,
+      referee_team_id: m.refereeTeamId ?? null,
       status: "pending",
     })),
     ...schedule.knockoutMatches.map((m) => ({
@@ -79,6 +83,9 @@ export async function POST(req: Request) {
       team_b_id: m.teamBId,
       team_a_source: m.teamASource ?? null,
       team_b_source: m.teamBSource ?? null,
+      // Knockout refs assigned dynamically: previous match's loser refs the
+      // next pending knockout match. See /api/match/[id]/status.
+      referee_team_id: null,
       status: "pending",
     })),
   ];

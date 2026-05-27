@@ -39,6 +39,7 @@ export interface Tournament {
   group_stage_time_limit_min: number | null;
   rules_doc_url: string | null;
   registration_form_url: string | null;
+  waiver_url: string | null;
   venue_address: string | null;
   venue_transport: string | null;
   venue_parking: string | null;
@@ -89,6 +90,7 @@ export interface Match {
   status: MatchStatus;
   serving_team_id: string | null;
   winner_team_id: string | null;
+  referee_team_id: string | null;
   started_at: string | null;
   created_at: string;
   updated_at: string;

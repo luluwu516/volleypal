@@ -20,8 +20,8 @@ export function GroupStandings({ standings, teams, promote = 2 }: Props) {
             <th className="text-left px-3 py-2">隊伍</th>
             <th className="text-center px-2 py-2">勝</th>
             <th className="text-center px-2 py-2">負</th>
-            <th className="text-center px-2 py-2">積分</th>
-            <th className="text-center px-2 py-2 tabular-nums">局率</th>
+            <th className="text-center px-2 py-2">總得分</th>
+            <th className="text-center px-2 py-2 tabular-nums">得失局</th>
           </tr>
         </thead>
         <tbody>
@@ -52,6 +52,9 @@ export function GroupStandings({ standings, teams, promote = 2 }: Props) {
       <div className="bg-amber-400/10 text-amber-400 text-xs px-3 py-1.5 text-center">
         — 晉級線 —
       </div>
+      <p className="text-[10px] text-muted-foreground px-3 py-1.5 border-t border-border/30">
+        得失局 (Set Ratio) = 贏得局數 / 輸掉局數
+      </p>
     </div>
   );
 }

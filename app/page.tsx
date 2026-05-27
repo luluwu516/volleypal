@@ -20,6 +20,7 @@ import {
   UtensilsCrossed,
   CupSoda,
   Utensils,
+  ShieldCheck,
 } from "lucide-react";
 import { NavigateButton } from "@/components/NavigateButton";
 import { VenueOptionList } from "@/components/VenueOptionList";
@@ -174,6 +175,29 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
                   ) : !tournament.venue_address ? (
                     <p className="text-sm text-muted-foreground">尚未提供</p>
                   ) : null}
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="waiver">
+                <AccordionTrigger className="px-4">
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="size-4 text-amber-400" />
+                    場館 Waiver
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 text-sm text-muted-foreground">
+                  {tournament.waiver_url ? (
+                    <a
+                      href={tournament.waiver_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-amber-300 hover:text-amber-200 underline"
+                    >
+                      簽署場館 Waiver
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  ) : (
+                    "尚未提供"
+                  )}
                 </AccordionContent>
               </AccordionItem>
               {tournament.venue_nearby && (

@@ -20,7 +20,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 const Body = z.object({
   tournament_id: z.string().uuid(),
   submitted_at: z.string().optional(),
-  responses: z.record(z.string(), z.array(z.string())),
+  // Lenient: accept any value shape per key; we'll coerce to string[] before pick().
+  responses: z.record(z.string(), z.unknown()),
 });
 
 function pick(
@@ -38,18 +39,43 @@ function pick(
   return null;
 }
 
+/**
+ * Apps Script `namedValues` can occasionally include non-string-array values
+ * (e.g. checkbox empties). Coerce everything to string[] so pick() is safe.
+ */
+function normalizeResponses(raw: Record<string, unknown>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (Array.isArray(v)) {
+      out[k] = v.map((x) => String(x ?? ""));
+    } else if (v == null) {
+      out[k] = [];
+    } else {
+      out[k] = [String(v)];
+    }
+  }
+  return out;
+}
+
 const POSITIONS = ["setter", "outside", "middle", "opposite", "libero", "any"];
 const GENDERS = ["male", "female", "other"];
 
 function normalizePosition(raw: string | null): string {
   if (!raw) return "any";
   const lower = raw.toLowerCase();
-  for (const p of POSITIONS) if (lower.includes(p)) return p;
+  if (
+    lower.includes("non-setter") ||
+    lower.includes("non setter") ||
+    lower.includes("非舉")
+  ) {
+    return "any";
+  }
   if (lower.includes("舉球") || lower.includes("二傳")) return "setter";
   if (lower.includes("主攻")) return "outside";
   if (lower.includes("副攻") || lower.includes("攔網")) return "middle";
   if (lower.includes("自由")) return "libero";
   if (lower.includes("接應")) return "opposite";
+  for (const p of POSITIONS) if (lower.includes(p)) return p;
   return "any";
 }
 
@@ -62,49 +88,107 @@ function normalizeGender(raw: string | null): string | null {
   return "other";
 }
 
+/**
+ * Google Forms date items return strings in the form's locale, which can be:
+ *   2026-06-15  (ISO)
+ *   6/15/2026   (US M/D/Y)
+ *   2026/06/15  (Y/M/D)
+ *   15/6/2026   (D/M/Y — does NOT parse natively in JS)
+ *   Jun 15, 2026
+ * Try native Date parsing first; if that fails, try D/M/Y manually.
+ * Returns null if completely unparseable rather than throwing.
+ */
+function parseBirthday(raw: string | null): string | null {
+  if (!raw) return null;
+  const native = new Date(raw);
+  if (!Number.isNaN(native.getTime())) {
+    return native.toISOString().slice(0, 10);
+  }
+  // Try D/M/Y or D-M-Y
+  const m = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10);
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += year < 30 ? 2000 : 1900;
+    const d = new Date(Date.UTC(year, month - 1, day));
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const auth = req.headers.get("authorization");
   const expected = `Bearer ${process.env.FORM_WEBHOOK_SHARED_SECRET}`;
   if (!process.env.FORM_WEBHOOK_SHARED_SECRET || auth !== expected) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  let body: z.infer<typeof Body>;
   try {
-    const body = Body.parse(await req.json());
-    const r = body.responses;
-    const name = pick(r, ["name", "姓名"]);
-    if (!name) {
-      return NextResponse.json({ error: "missing name field" }, { status: 400 });
-    }
-    const birthday = pick(r, ["birthday", "生日", "dob"]);
-    const email = pick(r, ["email", "電子郵件"]);
-    const phone = pick(r, ["phone", "電話"]);
-    const gender = normalizeGender(pick(r, ["gender", "性別", "sex"]));
-    const position = normalizePosition(pick(r, ["position", "位置"]));
+    body = Body.parse(await req.json());
+  } catch (e) {
+    return NextResponse.json(
+      { stage: "parse", error: e instanceof Error ? e.message : "invalid body" },
+      { status: 400 },
+    );
+  }
 
-    const row: Record<string, unknown> = {
-      tournament_id: body.tournament_id,
-      name,
-      gender,
-      birthday: birthday ? new Date(birthday).toISOString().slice(0, 10) : null,
-      position,
-      email,
-      phone,
-      raw_form_payload: r,
-    };
+  const r = normalizeResponses(body.responses as Record<string, unknown>);
+  const name = pick(r, ["name", "姓名"]);
+  if (!name) {
+    return NextResponse.json(
+      {
+        stage: "extract",
+        error: "missing name field",
+        responseKeys: Object.keys(r),
+      },
+      { status: 400 },
+    );
+  }
 
+  const birthdayRaw = pick(r, ["birthday", "生日", "dob"]);
+  const birthday = parseBirthday(birthdayRaw);
+  const email = pick(r, ["email", "電子郵件"]);
+  const phone = pick(r, ["phone", "電話"]);
+  const gender = normalizeGender(pick(r, ["gender", "性別", "sex"]));
+  const position = normalizePosition(pick(r, ["position", "位置"]));
+
+  const row: Record<string, unknown> = {
+    tournament_id: body.tournament_id,
+    name,
+    gender,
+    birthday,
+    position,
+    email,
+    phone,
+    raw_form_payload: r,
+  };
+
+  try {
     const db = supabaseAdmin();
     const { error } = email
       ? await db
           .from("registrations")
           .upsert(row, { onConflict: "tournament_id,email" })
       : await db.from("registrations").insert(row);
-    if (error) throw error;
-    return NextResponse.json({ ok: true });
+    if (error) {
+      console.error("form-webhook db error", error);
+      return NextResponse.json(
+        { stage: "db", error: error.message, code: error.code, hint: error.hint },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json({
+      ok: true,
+      birthday_parsed: birthday,
+      birthday_raw: birthdayRaw,
+    });
   } catch (e) {
-    console.error("form-webhook error", e);
+    console.error("form-webhook unexpected error", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "error" },
-      { status: 400 },
+      { stage: "unknown", error: e instanceof Error ? e.message : "error" },
+      { status: 500 },
     );
   }
 }

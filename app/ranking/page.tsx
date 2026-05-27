@@ -7,6 +7,7 @@ import {
 import { standingsForGroup } from "@/lib/ranking-helpers";
 import { GroupStandings } from "@/components/ranking/GroupStandings";
 import { Bracket } from "@/components/ranking/Bracket";
+import { RoundRobinMatrix } from "@/components/ranking/RoundRobinMatrix";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const revalidate = 15;
@@ -66,11 +67,37 @@ export default async function RankingPage() {
             淘汰賽
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="a" className="mt-4">
+        <TabsContent value="a" className="mt-4 flex flex-col gap-4">
           <GroupStandings standings={standingsA} teams={teams} />
+          <section>
+            <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+              對戰矩陣
+            </h2>
+            <RoundRobinMatrix
+              matches={matches.filter(
+                (m) => m.phase === "group" && m.group_label === "A",
+              )}
+              matchSets={sets}
+              teams={teams}
+              groupTeamIds={standingsA.map((s) => s.teamId)}
+            />
+          </section>
         </TabsContent>
-        <TabsContent value="b" className="mt-4">
+        <TabsContent value="b" className="mt-4 flex flex-col gap-4">
           <GroupStandings standings={standingsB} teams={teams} />
+          <section>
+            <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+              對戰矩陣
+            </h2>
+            <RoundRobinMatrix
+              matches={matches.filter(
+                (m) => m.phase === "group" && m.group_label === "B",
+              )}
+              matchSets={sets}
+              teams={teams}
+              groupTeamIds={standingsB.map((s) => s.teamId)}
+            />
+          </section>
         </TabsContent>
         <TabsContent value="ko" className="mt-4">
           <Bracket matches={matches} teams={teams} />

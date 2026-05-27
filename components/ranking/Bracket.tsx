@@ -50,6 +50,11 @@ function MatchCard({
         <Row name={teamLabel(m.team_a_id, m.team_a_source, teams)} />
         <Row name={teamLabel(m.team_b_id, m.team_b_source, teams)} />
       </div>
+      {m.referee_team_id && (
+        <p className="text-[10px] text-muted-foreground mt-1">
+          🦓 {teamLabel(m.referee_team_id, null, teams)}
+        </p>
+      )}
     </div>
   );
 }

@@ -44,6 +44,11 @@ export interface ScheduledMatch {
   teamBSource?: string;
   court: number;
   scheduledAt: Date;
+  /** Team responsible for refereeing this match. Null when there aren't
+   *  enough resting teams (e.g. court count is too high) or for knockout
+   *  matches where the referee is assigned dynamically when the previous
+   *  match finishes (loser refs the next). */
+  refereeTeamId?: string | null;
 }
 
 export interface ScheduledTournament {
@@ -135,6 +140,62 @@ function assignCourtsAndTimes(
   return out;
 }
 
+/**
+ * Assign a referee team to each match by rotating through teams that aren't
+ * playing in the current time slot. Avoids same team refereeing two slots in
+ * a row when alternatives exist; also avoids the team that played the
+ * previous slot (so they get a real rest).
+ *
+ * Mutates the input array (sets refereeTeamId). If there aren't enough
+ * resting teams in a slot (i.e. numCourts > floor(totalTeams/2)), some
+ * matches are left with refereeTeamId = null.
+ */
+export function assignGroupRefs(
+  matches: ScheduledMatch[],
+  allTeamIds: string[],
+): ScheduledMatch[] {
+  const bySlot = new Map<number, ScheduledMatch[]>();
+  for (const m of matches) {
+    const k = m.scheduledAt.getTime();
+    bySlot.set(k, [...(bySlot.get(k) ?? []), m]);
+  }
+
+  const sortedSlots = [...bySlot.entries()].sort(([a], [b]) => a - b);
+  let lastSlotPlaying = new Set<string>();
+  let lastSlotRefs = new Set<string>();
+
+  for (const [, slotMatches] of sortedSlots) {
+    const playing = new Set<string>();
+    for (const m of slotMatches) {
+      if (m.teamAId) playing.add(m.teamAId);
+      if (m.teamBId) playing.add(m.teamBId);
+    }
+    const resting = allTeamIds.filter((id) => !playing.has(id));
+
+    // Preference order: didn't ref last slot AND didn't play last slot >
+    //                   didn't ref last slot >
+    //                   didn't play last slot >
+    //                   anyone resting
+    const tier = (id: string) =>
+      (lastSlotRefs.has(id) ? 0 : 2) + (lastSlotPlaying.has(id) ? 0 : 1);
+    const pool = [...resting].sort((a, b) => tier(b) - tier(a));
+
+    const used = new Set<string>();
+    for (const m of slotMatches) {
+      const ref = pool.find((id) => !used.has(id));
+      if (ref) {
+        m.refereeTeamId = ref;
+        used.add(ref);
+      } else {
+        m.refereeTeamId = null;
+      }
+    }
+    lastSlotPlaying = playing;
+    lastSlotRefs = used;
+  }
+  return matches;
+}
+
 export function scheduleGroupStage(
   input: SchedulerInput,
 ): ScheduledMatch[] {
@@ -166,11 +227,15 @@ export function scheduleGroupStage(
       teamBId: b.id,
     });
   }
-  return assignCourtsAndTimes(
+  const scheduled = assignCourtsAndTimes(
     pending,
     input.numCourts,
     input.matchDurationMin,
     input.startsAt,
+  );
+  return assignGroupRefs(
+    scheduled,
+    input.teams.map((t) => t.id),
   );
 }
 

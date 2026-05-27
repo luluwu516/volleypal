@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Match, MatchSet, Team, Tournament } from "@/lib/db/types";
 import { MatchTimer } from "@/components/MatchTimer";
+import { fmtTime } from "@/lib/formatTime";
 
 interface ApiPayload {
   tournament: Tournament | null;
@@ -95,17 +96,24 @@ export function LiveScoreboard() {
             {upcoming.map((m) => (
               <li
                 key={m.id}
-                className="rounded-lg border p-3 flex items-center justify-between text-sm"
+                className="rounded-lg border p-3 flex flex-col gap-1 text-sm"
               >
-                <span>
-                  {teamName(m.team_a_id, m.team_a_source, data.teams)} vs{" "}
-                  {teamName(m.team_b_id, m.team_b_source, data.teams)}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  Court {m.court ?? "?"}
-                  {m.scheduled_at &&
-                    ` · ${new Date(m.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span>
+                    {teamName(m.team_a_id, m.team_a_source, data.teams)} vs{" "}
+                    {teamName(m.team_b_id, m.team_b_source, data.teams)}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    Court {m.court ?? "?"}
+                    {m.scheduled_at && ` · ${fmtTime(m.scheduled_at)}`}
+                  </span>
+                </div>
+                {m.referee_team_id && (
+                  <p className="text-[11px] text-muted-foreground">
+                    🦓 裁判：
+                    {teamName(m.referee_team_id, null, data.teams)}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
@@ -180,6 +188,11 @@ function ScoreCard({
           timeLimitMin={timeLimitMin}
         />
       </div>
+      {match.referee_team_id && (
+        <p className="text-[11px] text-muted-foreground text-center">
+          🦓 裁判：{teamName(match.referee_team_id, null, teams)}
+        </p>
+      )}
 
       {/* Team names + ball possession */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">

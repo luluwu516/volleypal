@@ -24,6 +24,7 @@ export function TournamentSettingsForm({ tournament }: Props) {
   );
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_doc_url ?? "");
   const [regUrl, setRegUrl] = useState(tournament.registration_form_url ?? "");
+  const [waiverUrl, setWaiverUrl] = useState(tournament.waiver_url ?? "");
   const [address, setAddress] = useState(tournament.venue_address ?? "");
   const [transport, setTransport] = useState(tournament.venue_transport ?? "");
   const [lunch, setLunch] = useState(tournament.venue_lunch_options ?? "");
@@ -49,6 +50,7 @@ export function TournamentSettingsForm({ tournament }: Props) {
           group_stage_time_limit_min: groupTimeLimit || null,
           rules_doc_url: rulesUrl || null,
           registration_form_url: regUrl || null,
+          waiver_url: waiverUrl || null,
           venue_address: address || null,
           venue_transport: transport || null,
           venue_lunch_options: lunch || null,
@@ -136,6 +138,16 @@ export function TournamentSettingsForm({ tournament }: Props) {
                 placeholder="https://forms.gle/..."
                 value={regUrl}
                 onChange={(e) => setRegUrl(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="waiver">場館 Waiver URL</Label>
+              <Input
+                id="waiver"
+                type="url"
+                placeholder="https://forms.gle/... 或 PDF 連結"
+                value={waiverUrl}
+                onChange={(e) => setWaiverUrl(e.target.value)}
               />
             </div>
           </div>

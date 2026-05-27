@@ -41,6 +41,14 @@ describe("buildStandings — basic 4-team round robin", () => {
     expect(standings[0].wins).toBe(3);
     expect(standings[3].wins).toBe(0);
   });
+
+  it("points field equals total points scored", () => {
+    const standings = buildStandings(teams, results);
+    const aRow = standings.find((s) => s.teamId === "a")!;
+    // a: 25+25 (vs b) + 25+25 (vs c) + 25+25 (vs d) = 150
+    expect(aRow.points).toBe(150);
+    expect(aRow.points).toBe(aRow.pointsWon);
+  });
 });
 
 describe("tiebreak — points then set ratio then point ratio", () => {
@@ -104,14 +112,16 @@ describe("compareStandings", () => {
 });
 
 describe("forfeit", () => {
-  it("gives forfeit loss 0 points instead of 1", () => {
-    const results = [match("a", "b", [[0, 25], [0, 25]], "a", true)];
+  it("flags forfeit on losing side; points still reflect actual scores", () => {
+    const results = [match("a", "b", [[25, 0], [25, 0]], "a", true)];
     const standings = buildStandings(["a", "b"], results);
     const aRow = standings.find((s) => s.teamId === "a")!;
     const bRow = standings.find((s) => s.teamId === "b")!;
-    expect(aRow.points).toBe(2);
+    expect(aRow.points).toBe(50); // total scored
     expect(bRow.points).toBe(0);
     expect(bRow.forfeitLosses).toBe(1);
+    expect(aRow.wins).toBe(1);
+    expect(bRow.losses).toBe(1);
   });
 });
 

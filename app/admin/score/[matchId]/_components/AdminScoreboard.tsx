@@ -158,15 +158,24 @@ export function AdminScoreboard({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {match.phase} · Court {match.court ?? "?"} · 狀態: {status}
-        </span>
-        <MatchTimer
-          startedAt={startedAt}
-          status={status}
-          timeLimitMin={groupTimeLimitMin}
-        />
+      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <span>
+            {match.phase} · Court {match.court ?? "?"} · 狀態: {status}
+          </span>
+          <MatchTimer
+            startedAt={startedAt}
+            status={status}
+            timeLimitMin={groupTimeLimitMin}
+          />
+        </div>
+        {match.referee_team_id && (
+          <p>
+            🦓 裁判：
+            {teams.find((t) => t.id === match.referee_team_id)?.name ??
+              match.referee_team_id.slice(0, 6)}
+          </p>
+        )}
       </div>
 
       {/* Set tabs */}

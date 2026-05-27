@@ -1,11 +1,11 @@
 /**
  * Pool-play ranking for VolleyPal.
  *
- * Tiebreak order (per user-confirmed volleyball rules):
+ * Tiebreak order:
  *   1. Wins (most)
- *   2. Points (win=2, loss=1, forfeit=0)
- *   3. Set ratio (sets won / sets lost; ties to higher)
- *   4. Point ratio (points won / points lost)
+ *   2. Points = total points scored across all sets (most)
+ *   3. Set ratio (sets won / sets lost; higher is better)
+ *   4. Point ratio (points won / points lost; higher = more efficient)
  *
  * In time-limited group play, a match may end with the leading team winning
  * a partial set — we still count whoever has more sets-won (or points-won
@@ -28,6 +28,7 @@ export interface StandingRow {
   wins: number;
   losses: number;
   forfeitLosses: number;
+  /** Tiebreak metric — sum of all points scored across all matches/sets. */
   points: number;
   setsWon: number;
   setsLost: number;
@@ -36,10 +37,6 @@ export interface StandingRow {
   setRatio: number;
   pointRatio: number;
 }
-
-const WIN_POINTS = 2;
-const LOSS_POINTS = 1;
-const FORFEIT_POINTS = 0;
 
 export function emptyRow(teamId: string): StandingRow {
   return {
@@ -86,19 +83,14 @@ function applyResult(row: StandingRow, opp: "A" | "B", result: MatchResult) {
   }
   if (teamWon) {
     row.wins += 1;
-    row.points += WIN_POINTS;
   } else {
     row.losses += 1;
-    if (result.forfeit) {
-      row.forfeitLosses += 1;
-      row.points += FORFEIT_POINTS;
-    } else {
-      row.points += LOSS_POINTS;
-    }
+    if (result.forfeit) row.forfeitLosses += 1;
   }
 }
 
 function finalize(row: StandingRow): StandingRow {
+  row.points = row.pointsWon;
   row.setRatio = row.setsLost === 0 ? row.setsWon : row.setsWon / row.setsLost;
   row.pointRatio =
     row.pointsLost === 0 ? row.pointsWon : row.pointsWon / row.pointsLost;
