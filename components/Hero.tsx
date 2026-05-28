@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { LongPressLogo } from "./LongPressLogo";
 
 interface Props {
@@ -33,9 +34,15 @@ export function Hero({ title, subtitle }: Props) {
         />
         {/* content */}
         <div className="relative flex flex-col items-center gap-2">
-          <div className="size-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 grid place-items-center text-2xl shadow-lg shadow-orange-500/30">
-            🏐
-          </div>
+          <Image
+            src="/logo-transparent-192.png"
+            alt="VolleyPal"
+            width={48}
+            height={48}
+            priority
+            className="size-12"
+          />
+
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-orange-400 to-amber-300 bg-clip-text text-transparent">
             VolleyPal
           </h1>
