@@ -65,7 +65,15 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <main className="flex-1 pb-20 mx-auto w-full max-w-md px-4 pt-4">
+          <main
+            className="flex-1 mx-auto w-full max-w-md"
+            style={{
+              paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 5rem)",
+              paddingLeft: "max(1rem, env(safe-area-inset-left))",
+              paddingRight: "max(1rem, env(safe-area-inset-right))",
+            }}
+          >
             {children}
           </main>
           <BottomNav isAdmin={isAdmin} />

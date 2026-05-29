@@ -103,7 +103,7 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
               <AccordionItem value="rules">
                 <AccordionTrigger className="px-4">
                   <span className="flex items-center gap-2">
-                    <FileText className="size-4 text-purple-400" />
+                    <FileText className="size-4 text-amber-400" />
                     競賽規章
                   </span>
                 </AccordionTrigger>
@@ -126,7 +126,7 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
               <AccordionItem value="registration">
                 <AccordionTrigger className="px-4">
                   <span className="flex items-center gap-2">
-                    <ClipboardList className="size-4 text-purple-400" />
+                    <ClipboardList className="size-4 text-amber-400" />
                     報名連結
                   </span>
                 </AccordionTrigger>
