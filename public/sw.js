@@ -11,7 +11,7 @@
  *   - /api/*:                       network-only (no SW intervention)
  */
 
-const CACHE = "volleypal-v4";
+const CACHE = "volleypal-v6";
 const SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -19,8 +19,8 @@ const SHELL = [
   "/icon-192.png",
   "/icon-512.png",
   "/icon-maskable-512.png",
+  "/logo.png",
   "/apple-touch-icon.png",
-  "/logo-transparent-192.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -53,7 +53,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icon") ||
     url.pathname.startsWith("/favicon") ||
-    url.pathname.startsWith("/logo-") ||
+    url.pathname === "/logo.png" ||
     url.pathname === "/manifest.webmanifest" ||
     url.pathname === "/apple-touch-icon.png"
   ) {

@@ -43,10 +43,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Hero
-        title={tournament?.name ?? "Setup pending"}
-        subtitle={tournament?.year ? String(tournament.year) : undefined}
-      />
+      <Hero title={tournament?.name ?? "Setup pending"} />
 
       {announcements.length > 0 && (
         <section className="flex flex-col gap-2">

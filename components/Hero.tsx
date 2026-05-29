@@ -3,7 +3,6 @@ import { LongPressLogo } from "./LongPressLogo";
 
 interface Props {
   title: string;
-  subtitle?: string;
 }
 
 /**
@@ -12,7 +11,7 @@ interface Props {
  * 1. Indigo→purple→slate-950 radial gradient
  * 2. Two sizes of star dots via repeated radial-gradient backgrounds
  */
-export function Hero({ title, subtitle }: Props) {
+export function Hero({ title }: Props) {
   return (
     <LongPressLogo>
       <section className="relative overflow-hidden rounded-2xl border border-purple-500/20 px-4 py-6">
@@ -35,7 +34,7 @@ export function Hero({ title, subtitle }: Props) {
         {/* content */}
         <div className="relative flex flex-col items-center gap-2">
           <Image
-            src="/logo-transparent-192.png"
+            src="/logo.png"
             alt="VolleyPal"
             width={48}
             height={48}
@@ -43,15 +42,9 @@ export function Hero({ title, subtitle }: Props) {
             className="size-12"
           />
 
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-orange-400 to-amber-300 bg-clip-text text-transparent">
-            VolleyPal
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-orange-400 to-amber-300 bg-clip-text text-transparent text-center">
+            {title}
           </h1>
-          {(title || subtitle) && (
-            <p className="text-sm text-purple-200/80 text-center">
-              {title}
-              {subtitle ? ` · ${subtitle}` : ""}
-            </p>
-          )}
         </div>
       </section>
     </LongPressLogo>
