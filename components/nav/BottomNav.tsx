@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Trophy, Tv, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export interface BottomNavProps {
   isAdmin?: boolean;
@@ -35,6 +36,7 @@ const ADMIN_TAB = {
 export function BottomNav({ isAdmin = false }: BottomNavProps) {
   const pathname = usePathname() || "/";
   const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
+  const slotCount = tabs.length + 1;
   return (
     <nav
       className="fixed bottom-0 inset-x-0 z-50 border-t border-border/40 bg-background/60 backdrop-blur-md backdrop-saturate-150"
@@ -42,7 +44,7 @@ export function BottomNav({ isAdmin = false }: BottomNavProps) {
     >
       <ul
         className="grid mx-auto max-w-md"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${slotCount}, minmax(0, 1fr))` }}
       >
         {tabs.map((t) => {
           const active = t.match(pathname);
@@ -64,6 +66,9 @@ export function BottomNav({ isAdmin = false }: BottomNavProps) {
             </li>
           );
         })}
+        <li className="flex">
+          <NotificationBell />
+        </li>
       </ul>
     </nav>
   );

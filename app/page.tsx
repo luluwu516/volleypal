@@ -1,7 +1,4 @@
-import {
-  getCurrentTournament,
-  listAnnouncements,
-} from "@/lib/db/repository";
+import { getCurrentTournament } from "@/lib/db/repository";
 import { Hero } from "@/components/Hero";
 import {
   Accordion,
@@ -10,7 +7,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   ExternalLink,
   FileText,
@@ -37,46 +33,10 @@ export const revalidate = 30;
 
 export default async function HomePage() {
   const tournament = await safe(getCurrentTournament, null);
-  const announcements = tournament
-    ? await safe(() => listAnnouncements(tournament.id), [])
-    : [];
 
   return (
     <div className="flex flex-col gap-4">
       <Hero title={tournament?.name ?? "Setup pending"} />
-
-      {announcements.length > 0 && (
-        <section className="flex flex-col gap-2">
-          {announcements.map((a) => (
-            <div
-              key={a.id}
-              className={`rounded-lg p-3 text-sm border ${
-                a.level === "urgent"
-                  ? "bg-red-500/10 text-red-200 border-red-500/40"
-                  : a.level === "warn"
-                    ? "bg-amber-500/10 text-amber-200 border-amber-500/40"
-                    : "bg-purple-500/10 text-purple-200 border-purple-500/40"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <Badge
-                  variant="secondary"
-                  className="uppercase text-[10px] tracking-wider"
-                >
-                  {a.level}
-                </Badge>
-                <span className="text-xs opacity-60">
-                  {new Date(a.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-              <p>{a.body}</p>
-            </div>
-          ))}
-        </section>
-      )}
 
       {!tournament && (
         <Card>

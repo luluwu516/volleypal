@@ -6,6 +6,13 @@ import { BottomNav } from "@/components/nav/BottomNav";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
+import { AnnouncementCenter } from "@/components/AnnouncementCenter";
+import { AnnouncementsProvider } from "@/components/AnnouncementsProvider";
+import {
+  getCurrentTournament,
+  listAnnouncements,
+} from "@/lib/db/repository";
+import type { Announcement } from "@/lib/db/types";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +64,15 @@ export default async function RootLayout({
   } catch {
     // Session cookie not configured yet — keep nav as public
   }
+  let initialAnnouncements: Announcement[] = [];
+  try {
+    const tournament = await getCurrentTournament();
+    if (tournament) {
+      initialAnnouncements = await listAnnouncements(tournament.id);
+    }
+  } catch {
+    // DB unavailable — banner will hydrate from /api/announcements poll
+  }
   return (
     <html
       lang="zh-Hant"
@@ -65,18 +81,21 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <main
-            className="flex-1 mx-auto w-full max-w-md"
-            style={{
-              paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
-              paddingBottom: "calc(env(safe-area-inset-bottom) + 5rem)",
-              paddingLeft: "max(1rem, env(safe-area-inset-left))",
-              paddingRight: "max(1rem, env(safe-area-inset-right))",
-            }}
-          >
-            {children}
-          </main>
-          <BottomNav isAdmin={isAdmin} />
+          <AnnouncementsProvider initial={initialAnnouncements}>
+            <main
+              className="flex-1 mx-auto w-full max-w-md"
+              style={{
+                paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 5rem)",
+                paddingLeft: "max(1rem, env(safe-area-inset-left))",
+                paddingRight: "max(1rem, env(safe-area-inset-right))",
+              }}
+            >
+              {children}
+            </main>
+            <BottomNav isAdmin={isAdmin} />
+            <AnnouncementCenter />
+          </AnnouncementsProvider>
           <Toaster richColors theme="dark" />
           <RegisterServiceWorker />
         </ThemeProvider>
