@@ -58,9 +58,13 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   let isAdmin = false;
+  let locked = false;
+  let lockedMatchId: string | undefined;
   try {
     const sess = await getAdminSession();
     isAdmin = Boolean(sess.adminId);
+    locked = Boolean(sess.locked);
+    lockedMatchId = sess.lockedMatchId;
   } catch {
     // Session cookie not configured yet — keep nav as public
   }
@@ -93,7 +97,7 @@ export default async function RootLayout({
             >
               {children}
             </main>
-            <BottomNav isAdmin={isAdmin} />
+            <BottomNav isAdmin={isAdmin} locked={locked} lockedMatchId={lockedMatchId} />
             <AnnouncementCenter />
           </AnnouncementsProvider>
           <Toaster richColors theme="dark" />

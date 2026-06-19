@@ -17,9 +17,11 @@ import {
 export function CancelTeamsButton({
   tournamentId,
   teamCount,
+  disabled = false,
 }: {
   tournamentId: string;
   teamCount: number;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -47,7 +49,9 @@ export function CancelTeamsButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">取消目前分隊</Button>
+        <Button variant="outline" disabled={disabled}>
+          取消目前分隊
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function AnnounceForm({ tournamentId }: { tournamentId: string }) {
+export function AnnounceForm({
+  tournamentId,
+  disabled = false,
+}: {
+  tournamentId: string;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const [body, setBody] = useState("");
   const [level, setLevel] = useState<"info" | "warn" | "urgent">("info");
@@ -34,30 +40,32 @@ export function AnnounceForm({ tournamentId }: { tournamentId: string }) {
     }
   }
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border p-3">
-      <Label htmlFor="body">訊息</Label>
-      <Input
-        id="body"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder="例如：午餐已到，請至大廳領取"
-      />
-      <div className="flex items-center gap-2">
-        {(["info", "warn", "urgent"] as const).map((l) => (
-          <Button
-            key={l}
-            type="button"
-            variant={level === l ? "default" : "outline"}
-            size="sm"
-            onClick={() => setLevel(l)}
-          >
-            {l}
-          </Button>
-        ))}
-      </div>
-      <Button type="submit" disabled={busy || !body.trim()}>
-        {busy ? "發佈中…" : "發佈"}
-      </Button>
+    <form onSubmit={submit} className="rounded-lg border p-3">
+      <fieldset disabled={disabled} className="flex flex-col gap-3 disabled:opacity-60">
+        <Label htmlFor="body">訊息</Label>
+        <Input
+          id="body"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="例如：午餐已到，請至大廳領取"
+        />
+        <div className="flex items-center gap-2">
+          {(["info", "warn", "urgent"] as const).map((l) => (
+            <Button
+              key={l}
+              type="button"
+              variant={level === l ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLevel(l)}
+            >
+              {l}
+            </Button>
+          ))}
+        </div>
+        <Button type="submit" disabled={busy || !body.trim()}>
+          {busy ? "發佈中…" : "發佈"}
+        </Button>
+      </fieldset>
     </form>
   );
 }

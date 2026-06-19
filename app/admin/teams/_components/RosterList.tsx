@@ -33,8 +33,10 @@ const SIGN_ZH: Record<string, string> = {
 
 export function RosterList({
   registrations,
+  disabled = false,
 }: {
   registrations: Registration[];
+  disabled?: boolean;
 }) {
   const [rows, setRows] = useState(
     [...registrations].sort((a, b) => a.name.localeCompare(b.name, "zh-Hant")),
@@ -121,8 +123,8 @@ export function RosterList({
               <select
                 value={r.skill_level ?? ""}
                 onChange={(e) => updateSkill(r.id, e.target.value)}
-                disabled={pending}
-                className="rounded border border-input bg-transparent px-1 py-0.5 text-sm text-center"
+                disabled={pending || disabled}
+                className="rounded border border-input bg-transparent px-1 py-0.5 text-sm text-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">—</option>
                 <option value="1">1</option>

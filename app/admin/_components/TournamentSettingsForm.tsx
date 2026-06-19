@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 
 interface Props {
   tournament: Tournament;
+  disabled?: boolean;
 }
 
-export function TournamentSettingsForm({ tournament }: Props) {
+export function TournamentSettingsForm({ tournament, disabled = false }: Props) {
   const router = useRouter();
   const [numCourts, setNumCourts] = useState(tournament.num_courts);
   const [matchDuration, setMatchDuration] = useState(
@@ -77,7 +78,11 @@ export function TournamentSettingsForm({ tournament }: Props) {
           {tournament.name} · {tournament.year}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent>
+        <fieldset
+          disabled={disabled}
+          className="flex flex-col gap-3 disabled:opacity-60 group"
+        >
         <div>
           <Label htmlFor="courts">場地數</Label>
           <Input
@@ -248,6 +253,7 @@ export function TournamentSettingsForm({ tournament }: Props) {
         <Button onClick={save} disabled={busy}>
           {busy ? "儲存中…" : "儲存"}
         </Button>
+        </fieldset>
       </CardContent>
     </Card>
   );

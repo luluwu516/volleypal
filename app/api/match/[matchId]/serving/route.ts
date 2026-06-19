@@ -16,6 +16,12 @@ export async function POST(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { matchId } = await params;
+  if (sess.locked && sess.lockedMatchId && sess.lockedMatchId !== matchId) {
+    return NextResponse.json(
+      { error: "locked to another match" },
+      { status: 403 },
+    );
+  }
   const { side } = Body.parse(await req.json());
   const db = supabaseAdmin();
 

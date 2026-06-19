@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 
 export function AnnouncementList({
   announcements,
+  disabled = false,
 }: {
   announcements: Announcement[];
+  disabled?: boolean;
 }) {
   const router = useRouter();
   async function dismiss(id: string) {
@@ -39,7 +41,12 @@ export function AnnouncementList({
             <p className="text-xs uppercase text-muted-foreground">{a.level}</p>
             <p className="text-sm">{a.body}</p>
           </div>
-          <Button size="sm" variant="ghost" onClick={() => dismiss(a.id)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => dismiss(a.id)}
+            disabled={disabled}
+          >
             刪除
           </Button>
         </li>

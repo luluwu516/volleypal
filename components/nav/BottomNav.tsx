@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Trophy, Tv, Settings } from "lucide-react";
+import { Home, Trophy, Tv, Settings, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export interface BottomNavProps {
   isAdmin?: boolean;
+  locked?: boolean;
+  lockedMatchId?: string;
 }
 
 const TABS = [
@@ -33,9 +35,21 @@ const ADMIN_TAB = {
   match: (p: string) => p.startsWith("/admin"),
 };
 
-export function BottomNav({ isAdmin = false }: BottomNavProps) {
+export function BottomNav({
+  isAdmin = false,
+  locked = false,
+  lockedMatchId,
+}: BottomNavProps) {
   const pathname = usePathname() || "/";
-  const tabs = isAdmin ? [...TABS, ADMIN_TAB] : TABS;
+  const adminTab = locked
+    ? {
+        href: lockedMatchId ? `/admin/score/${lockedMatchId}` : "/admin/score",
+        label: "計分",
+        icon: Lock,
+        match: (p: string) => p.startsWith("/admin"),
+      }
+    : ADMIN_TAB;
+  const tabs = isAdmin ? [...TABS, adminTab] : TABS;
   const slotCount = tabs.length + 1;
   return (
     <nav

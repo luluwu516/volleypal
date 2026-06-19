@@ -10,6 +10,9 @@ export async function DELETE(
   if (!sess.adminId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (sess.locked) {
+    return NextResponse.json({ error: "locked" }, { status: 403 });
+  }
   const { id } = await params;
   const { error } = await supabaseAdmin().from("announcements").delete().eq("id", id);
   if (error) throw error;

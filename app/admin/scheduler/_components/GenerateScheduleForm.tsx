@@ -14,6 +14,7 @@ interface Props {
   defaultDuration: number;
   existingCount: number;
   teamCount: number;
+  disabled?: boolean;
 }
 
 function defaultStart(): string {
@@ -33,6 +34,7 @@ export function GenerateScheduleForm({
   defaultDuration,
   existingCount,
   teamCount,
+  disabled = false,
 }: Props) {
   const router = useRouter();
   const [courts, setCourts] = useState(defaultCourts);
@@ -83,6 +85,7 @@ export function GenerateScheduleForm({
             max={6}
             value={courts}
             onChange={(e) => setCourts(Number(e.target.value))}
+            disabled={disabled}
           />
         </div>
         <div>
@@ -94,6 +97,7 @@ export function GenerateScheduleForm({
             max={120}
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
+            disabled={disabled}
           />
         </div>
         <div>
@@ -103,6 +107,7 @@ export function GenerateScheduleForm({
             type="datetime-local"
             value={startsAt}
             onChange={(e) => setStartsAt(e.target.value)}
+            disabled={disabled}
           />
         </div>
         {existingCount > 0 && (
@@ -110,7 +115,7 @@ export function GenerateScheduleForm({
             ⚠ 已有 {existingCount} 場比賽。pending 場次會被清除重排，已 finished 的會保留。
           </p>
         )}
-        <Button onClick={run} disabled={busy}>
+        <Button onClick={run} disabled={busy || disabled}>
           {busy ? "生成中…" : "生成賽程"}
         </Button>
       </CardContent>

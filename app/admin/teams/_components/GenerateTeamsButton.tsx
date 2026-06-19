@@ -17,9 +17,11 @@ import {
 export function GenerateTeamsButton({
   tournamentId,
   existingCount,
+  disabled = false,
 }: {
   tournamentId: string;
   existingCount: number;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -48,7 +50,7 @@ export function GenerateTeamsButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>一鍵星座分隊</Button>
+        <Button disabled={disabled}>一鍵星座分隊</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

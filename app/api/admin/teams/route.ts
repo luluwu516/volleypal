@@ -15,6 +15,9 @@ export async function DELETE(req: Request) {
   if (!sess.adminId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (sess.locked) {
+    return NextResponse.json({ error: "locked" }, { status: 403 });
+  }
   const { tournamentId } = Body.parse(await req.json());
   const db = supabaseAdmin();
   await db.from("matches").delete().eq("tournament_id", tournamentId);
