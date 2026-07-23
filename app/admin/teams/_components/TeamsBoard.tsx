@@ -72,9 +72,10 @@ export function TeamsBoard({
 
   // Cross-team imbalance for the top warning banner
   const teamSizes = teams.map((t) => (membersByTeam.get(t.id) ?? []).length);
-  const maxSize = Math.max(...teamSizes, 0);
-  const minSize = Math.min(...teamSizes, 0);
-  const imbalanced = teams.length > 0 && maxSize - minSize > 1;
+  const maxSize = teamSizes.length > 0 ? Math.max(...teamSizes) : 0;
+  const minSize = teamSizes.length > 0 ? Math.min(...teamSizes) : 0;
+  const diff = maxSize - minSize;
+  const imbalanced = teams.length > 0 && diff > 1;
 
   async function move(registrationId: string, targetTeamId: string) {
     const prev = assignment.get(registrationId);
@@ -114,7 +115,7 @@ export function TeamsBoard({
     <div className="flex flex-col gap-3">
       {imbalanced && (
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          ⚠ 各隊人數差異超過 1(最多 {maxSize} 人,最少 {minSize} 人)
+          ⚠ 各隊人數差異 {diff} (最多 {maxSize} 人,最少 {minSize} 人)
         </p>
       )}
       {teams.map((t) => {

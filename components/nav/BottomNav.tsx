@@ -67,15 +67,15 @@ export function BottomNav({
             <li key={t.href} className="flex">
               <Link
                 href={t.href}
+                aria-label={t.label}
                 className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1 py-3 text-xs transition-colors",
+                  "flex-1 flex items-center justify-center py-4 transition-colors",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="size-5" />
-                <span>{t.label}</span>
+                <Icon className="size-6" />
               </Link>
             </li>
           );
