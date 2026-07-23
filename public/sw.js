@@ -23,10 +23,12 @@ const SHELL = [
   "/apple-touch-icon.png",
 ];
 
+// No skipWaiting() / clients.claim() — a new SW installed during an event
+// day (e.g. mid-match hotfix) waits in the background. It only takes over
+// when the user closes every VolleyPal tab and reopens, so scoring in
+// progress never gets interrupted by a forced page reload.
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()),
-  );
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
 });
 
 self.addEventListener("activate", (event) => {
@@ -35,8 +37,7 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-      )
-      .then(() => self.clients.claim()),
+      ),
   );
 });
 

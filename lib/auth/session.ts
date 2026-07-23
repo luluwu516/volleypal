@@ -18,7 +18,9 @@ export const sessionOptions: SessionOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    // 24h — one tournament day. Shorter TTL narrows the window if the
+    // device gets left behind or picked up by someone after the event.
+    maxAge: 60 * 60 * 24,
   },
 };
 
