@@ -36,79 +36,43 @@ export async function POST(
   const body = Body.parse(await req.json());
   const db = supabaseAdmin();
 
-  // Load current sets for this match
-  const { data: existing, error: loadErr } = await db
+  // Snapshot state before the change for the audit log. Best-effort — if it
+  // fails we still apply the score change.
+  const { data: before } = await db
     .from("match_sets")
     .select("*")
     .eq("match_id", matchId)
     .order("set_no", { ascending: true });
-  if (loadErr) throw loadErr;
-  const sets = existing ?? [];
 
   if (body.action === "bump") {
-    const target = sets.find((s) => s.set_no === body.setNo);
-    if (!target) {
-      const fresh = {
-        match_id: matchId,
-        set_no: body.setNo,
-        score_a: body.side === "a" ? Math.max(0, body.delta) : 0,
-        score_b: body.side === "b" ? Math.max(0, body.delta) : 0,
-      };
-      const { error } = await db.from("match_sets").insert(fresh);
-      if (error) throw error;
-    } else {
-      const next = {
-        ...target,
-        score_a:
-          body.side === "a" ? Math.max(0, target.score_a + body.delta) : target.score_a,
-        score_b:
-          body.side === "b" ? Math.max(0, target.score_b + body.delta) : target.score_b,
-      };
-      const { error } = await db
-        .from("match_sets")
-        .update({ score_a: next.score_a, score_b: next.score_b })
-        .eq("match_id", matchId)
-        .eq("set_no", body.setNo);
-      if (error) throw error;
-    }
-    // Rally-point scoring: whoever just scored gets the serve.
-    // Only on +1 — −1 is a correction and shouldn't flip the serve.
-    if (body.delta > 0) {
-      const { data: m } = await db
-        .from("matches")
-        .select("team_a_id, team_b_id")
-        .eq("id", matchId)
-        .single();
-      if (m) {
-        const newServer = body.side === "a" ? m.team_a_id : m.team_b_id;
-        await db
-          .from("matches")
-          .update({ serving_team_id: newServer })
-          .eq("id", matchId);
-      }
-    }
-  } else if (body.action === "set") {
-    const { error } = await db
-      .from("match_sets")
-      .upsert({
-        match_id: matchId,
-        set_no: body.setNo,
-        score_a: body.scoreA,
-        score_b: body.scoreB,
-      });
+    // Atomic increment via Postgres RPC — no SELECT-then-UPDATE race.
+    // See supabase/migrations/0004_atomic_bump_score.sql.
+    const { error } = await db.rpc("bump_match_score", {
+      p_match_id: matchId,
+      p_set_no: body.setNo,
+      p_side: body.side,
+      p_delta: body.delta,
+    });
+    if (error) throw error;
+  } else {
+    // Absolute set — last-write-wins is acceptable for a corrective admin op.
+    const { error } = await db.from("match_sets").upsert({
+      match_id: matchId,
+      set_no: body.setNo,
+      score_a: body.scoreA,
+      score_b: body.scoreB,
+    });
     if (error) throw error;
   }
 
-  // Audit
   await db.from("score_edits").insert({
     match_id: matchId,
     admin_id: sess.adminId,
-    set_no: "setNo" in body ? body.setNo : null,
-    before: sets,
+    set_no: body.setNo,
+    before: before ?? [],
     after: body,
   });
 
-  // Return refreshed sets
   const { data: refreshed } = await db
     .from("match_sets")
     .select("*")
