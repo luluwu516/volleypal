@@ -16,7 +16,11 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-      - run: npm ci
+      # `npm install` instead of `npm ci` — sharp/emnapi transitive deps
+      # resolve differently on Linux vs macOS (optional platform binaries),
+      # so a lockfile generated on macOS trips `npm ci`'s strict check on
+      # Linux runners. Not fully deterministic but reliable across OSes.
+      - run: npm install --no-audit --no-fund --prefer-offline
       - name: Lint
         run: npm run lint
       - name: Type-check & build
