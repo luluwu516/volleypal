@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Match, MatchSet, Team, Tournament } from "@/lib/db/types";
 import { MatchTimer } from "@/components/MatchTimer";
 import { fmtTime } from "@/lib/formatTime";
@@ -12,39 +12,71 @@ interface ApiPayload {
   sets: MatchSet[];
 }
 
-const POLL_MS = 5000;
+const BASE_POLL_MS = 5_000;
+const MAX_POLL_MS = 60_000;
 
 export function LiveScoreboard() {
   const [data, setData] = useState<ApiPayload | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // stale = we're currently in a network-blip state but showing the last-good data.
+  const [stale, setStale] = useState(false);
+  const [initialError, setInitialError] = useState<string | null>(null);
+  // Track first-fetch state via ref so the polling effect doesn't re-subscribe
+  // every time we get a new payload.
+  const hasDataRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
+    let failCount = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = () => {
+      // Exponential backoff on repeated failures so we don't hammer the server
+      // during a real outage; snap back to 5s once we get one good response.
+      const delay = Math.min(
+        BASE_POLL_MS * Math.max(1, failCount ** 2),
+        MAX_POLL_MS,
+      );
+      timeoutId = setTimeout(fetchOnce, delay);
+    };
+
     const fetchOnce = async () => {
       try {
         const res = await fetch("/api/scores", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (!alive) return;
-        if (json.error) setError(json.error);
-        else {
-          setData(json);
-          setError(null);
-        }
+        if (json.error) throw new Error(json.error);
+        // Keep last-good data on the screen; only replace after a successful fetch
+        setData(json);
+        setStale(false);
+        setInitialError(null);
+        hasDataRef.current = true;
+        failCount = 0;
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : "fetch failed");
+        if (!alive) return;
+        failCount += 1;
+        // On the very first fetch, we have no data to fall back to — surface the
+        // error. On subsequent failures, keep whatever's on screen and flag stale.
+        setStale(true);
+        if (!hasDataRef.current) {
+          setInitialError(e instanceof Error ? e.message : "fetch failed");
+        }
+      } finally {
+        if (alive) schedule();
       }
     };
     fetchOnce();
-    const id = setInterval(fetchOnce, POLL_MS);
     return () => {
       alive = false;
-      clearInterval(id);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
-  if (error)
+  if (!data && initialError)
     return (
-      <p className="text-sm text-destructive text-center py-6">{error}</p>
+      <p className="text-sm text-destructive text-center py-6">
+        無法載入即時比分:{initialError}
+      </p>
     );
   if (!data)
     return (
@@ -67,6 +99,11 @@ export function LiveScoreboard() {
 
   return (
     <div className="flex flex-col gap-4">
+      {stale && (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 text-center">
+          ⚠ 網路連線不穩定,顯示為上次成功載入的資料
+        </p>
+      )}
       {liveMatches.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-6">
           目前沒有進行中的比賽

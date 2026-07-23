@@ -68,7 +68,7 @@ export function BottomNav({
               <Link
                 href={t.href}
                 className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs transition-colors",
+                  "flex-1 flex flex-col items-center justify-center gap-1 py-3 text-xs transition-colors",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground",

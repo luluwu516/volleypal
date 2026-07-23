@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -117,10 +118,17 @@ function parseBirthday(raw: string | null): string | null {
   return null;
 }
 
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export async function POST(req: Request) {
-  const auth = req.headers.get("authorization");
-  const expected = `Bearer ${process.env.FORM_WEBHOOK_SHARED_SECRET}`;
-  if (!process.env.FORM_WEBHOOK_SHARED_SECRET || auth !== expected) {
+  const secret = process.env.FORM_WEBHOOK_SHARED_SECRET;
+  const auth = req.headers.get("authorization") ?? "";
+  if (!secret || !safeEqual(auth, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -168,6 +176,23 @@ export async function POST(req: Request) {
 
   try {
     const db = supabaseAdmin();
+    // Idempotency:
+    //   - Email present → upsert on the (tournament_id, email) unique index
+    //   - Email null    → best-effort dedupe on (tournament_id, name, birthday).
+    //     Small race window if the same person submits twice within the same
+    //     Vercel invocation lifecycle, but that's a very rare manual pattern.
+    if (!email && birthday) {
+      const { data: existing } = await db
+        .from("registrations")
+        .select("id")
+        .eq("tournament_id", body.tournament_id)
+        .eq("name", name)
+        .eq("birthday", birthday)
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json({ ok: true, dedupe: "matched_existing" });
+      }
+    }
     const { error } = email
       ? await db
           .from("registrations")

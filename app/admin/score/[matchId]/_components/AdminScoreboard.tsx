@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Match, MatchSet, Team } from "@/lib/db/types";
@@ -50,6 +50,11 @@ export function AdminScoreboard({
   })();
   const [activeSet, setActiveSet] = useState(initialActive);
   const [pending, start] = useTransition();
+  // Synchronous lock — protects against rapid double-taps where the button's
+  // `disabled={pending}` hasn't re-rendered yet between the two click events.
+  // Without this, two +1 taps in the same 16ms frame both fire bump() and the
+  // server delta-applies +2 instead of +1.
+  const inFlight = useRef(false);
 
   const a = teamName(match.team_a_id, match.team_a_source, teams);
   const b = teamName(match.team_b_id, match.team_b_source, teams);
@@ -66,6 +71,8 @@ export function AdminScoreboard({
   }
 
   function bump(side: "a" | "b", delta: number) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     const setNo = activeSet;
     const current = findSet(sets, setNo) ?? {
       match_id: match.id,
@@ -94,11 +101,15 @@ export function AdminScoreboard({
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
         setSets(initialSets);
+      } finally {
+        inFlight.current = false;
       }
     });
   }
 
   function setStatusAction(next: Match["status"], winnerSide?: "a" | "b") {
+    if (inFlight.current) return;
+    inFlight.current = true;
     start(async () => {
       try {
         const res = await fetch(`/api/match/${match.id}/status`, {
@@ -113,11 +124,15 @@ export function AdminScoreboard({
         router.refresh();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
+      } finally {
+        inFlight.current = false;
       }
     });
   }
 
   function setServing(side: "a" | "b" | null) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     const teamId = side === "a" ? match.team_a_id : side === "b" ? match.team_b_id : null;
     setServingTeamId(teamId);
     start(async () => {
@@ -131,6 +146,8 @@ export function AdminScoreboard({
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
         setServingTeamId(match.serving_team_id);
+      } finally {
+        inFlight.current = false;
       }
     });
   }

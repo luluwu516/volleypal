@@ -40,7 +40,7 @@ export function NotificationBell() {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
           aria-label={
             unreadCount > 0 ? `PSA，${unreadCount} 則未讀` : "PSA"
           }

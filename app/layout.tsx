@@ -90,7 +90,7 @@ export default async function RootLayout({
               className="flex-1 mx-auto w-full max-w-md"
               style={{
                 paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
-                paddingBottom: "calc(env(safe-area-inset-bottom) + 5rem)",
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 5.5rem)",
                 paddingLeft: "max(1rem, env(safe-area-inset-left))",
                 paddingRight: "max(1rem, env(safe-area-inset-right))",
               }}
