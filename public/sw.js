@@ -11,9 +11,11 @@
  *   - /api/*:                       network-only (no SW intervention)
  */
 
-const CACHE = "volleypal-v6";
+const CACHE = "volleypal-v7";
+const OFFLINE_URL = "/offline.html";
 const SHELL = [
   "/",
+  OFFLINE_URL,
   "/manifest.webmanifest",
   "/favicon-32.png",
   "/icon-192.png",
@@ -72,7 +74,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML navigation — network-first, fall back to cached "/" shell when offline
+  // HTML navigation — network-first. Offline fallback order:
+  //   1. exact cached response for this URL (previously visited while online)
+  //   2. dedicated /offline.html so the URL bar reflects reality and the user
+  //      knows why nothing loaded — never the "/" shell served under a
+  //      different URL, which made navigations appear silently stuck.
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
@@ -81,7 +87,9 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((c) => c.put(req, copy));
           return res;
         })
-        .catch(() => caches.match(req).then((m) => m || caches.match("/"))),
+        .catch(() =>
+          caches.match(req).then((m) => m || caches.match(OFFLINE_URL)),
+        ),
     );
   }
 });

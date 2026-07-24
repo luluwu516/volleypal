@@ -16,6 +16,10 @@ const STORAGE_EVENT = "volleypal:dismissed-changed";
 const POLL_MS = 30_000;
 const EMPTY_DISMISSED = new Set<string>();
 
+const subscribeNoop = () => () => {};
+const getHydratedServer = () => false;
+const getHydratedClient = () => true;
+
 function readDismissedRaw(): string {
   if (typeof window === "undefined") return "";
   try {
@@ -83,13 +87,24 @@ interface ProviderProps {
  */
 export function AnnouncementsProvider({ initial, children }: ProviderProps) {
   const [items, setItems] = useState<Announcement[]>(initial);
+  // useSyncExternalStore's server snapshot for `dismissedRaw` is "" because
+  // localStorage isn't reachable at SSR, so the first client render before
+  // hydration treats the dismissed set as empty. Without this gate, any
+  // already-read urgent announcement flashes as a modal for one frame before
+  // localStorage kicks in. We piggyback on useSyncExternalStore's own SSR
+  // handling (server → false, client → true) to defer render past hydration.
+  const hydrated = useSyncExternalStore(
+    subscribeNoop,
+    getHydratedClient,
+    getHydratedServer,
+  );
 
   const dismissedRaw = useSyncExternalStore(
     subscribeDismissed,
     readDismissedRaw,
     () => "",
   );
-  const dismissed = parseDismissed(dismissedRaw);
+  const dismissed = hydrated ? parseDismissed(dismissedRaw) : EMPTY_DISMISSED;
 
   useEffect(() => {
     let cancelled = false;
@@ -124,7 +139,7 @@ export function AnnouncementsProvider({ initial, children }: ProviderProps) {
     writeDismissed(next);
   }, [items]);
 
-  const visibleItems = items.filter((a) => !isExpired(a));
+  const visibleItems = hydrated ? items.filter((a) => !isExpired(a)) : [];
   const unreadCount = visibleItems.filter((a) => !dismissed.has(a.id)).length;
 
   return (
