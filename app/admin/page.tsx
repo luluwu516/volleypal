@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Settings } from "lucide-react";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { getCurrentTournament } from "@/lib/db/repository";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,46 +23,27 @@ export default async function AdminHome() {
             登入身分: {sess.adminName}
           </p>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            href={locked ? "#" : "/admin/settings"}
-            aria-label="賽事設定"
-            aria-disabled={locked}
-            tabIndex={locked ? -1 : undefined}
-            className={locked ? "pointer-events-none" : ""}
-          >
-            <Button variant="ghost" size="icon" disabled={locked}>
-              <Settings className="size-5" />
-            </Button>
-          </Link>
-          <LogoutButton />
-        </div>
+        <LogoutButton />
       </header>
 
       {locked && <LockedBanner />}
 
       {tournament ? (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center justify-between">
-              <span>
+        <TournamentCardLink disabled={locked}>
+          <Card className="transition-colors hover:border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">
                 {tournament.name} · {tournament.year}
-              </span>
-              <Link
-                href="/admin/settings"
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                編輯
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {tournament.num_courts} 場地 · 每場 {tournament.match_duration_min} 分
-            {tournament.group_stage_time_limit_min
-              ? ` · 預賽上限 ${tournament.group_stage_time_limit_min} 分`
-              : ""}
-          </CardContent>
-        </Card>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs text-muted-foreground">
+              {tournament.num_courts} 場地 · 每場 {tournament.match_duration_min} 分
+              {tournament.group_stage_time_limit_min
+                ? ` · 預賽上限 ${tournament.group_stage_time_limit_min} 分`
+                : ""}
+            </CardContent>
+          </Card>
+        </TournamentCardLink>
       ) : (
         <Card>
           <CardHeader>
@@ -106,6 +86,31 @@ export default async function AdminHome() {
         </div>
       )}
     </div>
+  );
+}
+
+function TournamentCardLink({
+  disabled,
+  children,
+}: {
+  disabled: boolean;
+  children: React.ReactNode;
+}) {
+  if (disabled) {
+    return (
+      <div aria-disabled className="pointer-events-none opacity-60">
+        {children}
+      </div>
+    );
+  }
+  return (
+    <Link
+      href="/admin/settings"
+      aria-label="編輯賽事設定"
+      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+    </Link>
   );
 }
 
