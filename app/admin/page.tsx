@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { getCurrentTournament } from "@/lib/db/repository";
+import type { GroupingStrategy } from "@/lib/db/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "./_components/LogoutButton";
 import { LockButton } from "./_components/LockButton";
 import { LockedBanner } from "@/components/LockedBanner";
+
+const STRATEGY_SUBTITLE: Record<GroupingStrategy, string> = {
+  zodiac_together: "同星座象",
+  zodiac_mixed: "打散星座象",
+  mbti_together: "同 MBTI 氣質",
+  mbti_mixed: "打散 MBTI 氣質",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +67,11 @@ export default async function AdminHome() {
         <AdminTile
           href="/admin/teams"
           title="分隊"
-          subtitle="星座分組"
+          subtitle={
+            tournament
+              ? STRATEGY_SUBTITLE[tournament.grouping_strategy]
+              : "尚未設定"
+          }
           disabled={locked}
         />
         <AdminTile

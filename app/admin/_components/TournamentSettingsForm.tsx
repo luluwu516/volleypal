@@ -77,7 +77,10 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           venue_nearby: nearby || null,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Save failed");
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Save failed");
+      }
       toast.success("已儲存");
       router.refresh();
     } catch (e) {

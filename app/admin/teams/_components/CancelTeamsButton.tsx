@@ -35,7 +35,10 @@ export function CancelTeamsButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tournamentId }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "失敗");
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "取消失敗");
+      }
       toast.success("已取消分隊");
       setOpen(false);
       router.refresh();

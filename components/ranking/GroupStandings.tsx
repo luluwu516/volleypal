@@ -52,7 +52,7 @@ export function GroupStandings({ standings, teams, promote = 2 }: Props) {
       <div className="bg-amber-400/10 text-amber-400 text-xs px-3 py-1.5 text-center">
         — 晉級線 —
       </div>
-      <p className="text-[10px] text-muted-foreground px-3 py-1.5 border-t border-border/30">
+      <p className="text-xs text-muted-foreground px-3 py-1.5 border-t border-border/30">
         得失局 (Set Ratio) = 贏得局數 / 輸掉局數
       </p>
     </div>

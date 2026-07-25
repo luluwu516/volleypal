@@ -60,7 +60,10 @@ export function RosterList({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ skill_level: skill }),
         });
-        if (!res.ok) throw new Error((await res.json()).error || "Save failed");
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(j.error ?? "Save failed");
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
         setRows((prev) =>
@@ -134,7 +137,7 @@ export function RosterList({
           );
         })}
       </ul>
-      <p className="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/30">
+      <p className="px-3 py-1.5 text-xs text-muted-foreground border-t border-border/30">
         🙌🏻 = 舉球員 · 實力點選後自動儲存
       </p>
     </div>

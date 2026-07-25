@@ -3,9 +3,19 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Flag } from "lucide-react";
 import type { Match, MatchSet, Team } from "@/lib/db/types";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { MatchTimer } from "@/components/MatchTimer";
 
 interface Props {
@@ -117,7 +127,10 @@ export function AdminScoreboard({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: next, winnerSide }),
         });
-        if (!res.ok) throw new Error((await res.json()).error || "Save failed");
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(j.error ?? "Save failed");
+        }
         setStatus(next);
         if (next === "live" && !startedAt) setStartedAt(new Date().toISOString());
         if (next === "finished") toast.success("已結束");
@@ -142,7 +155,10 @@ export function AdminScoreboard({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ side }),
         });
-        if (!res.ok) throw new Error((await res.json()).error || "Save failed");
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(j.error ?? "Save failed");
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
         setServingTeamId(match.serving_team_id);
@@ -173,6 +189,12 @@ export function AdminScoreboard({
   const autoWinner: "a" | "b" | null =
     totalA > totalB ? "a" : totalB > totalA ? "b" : null;
 
+  // Knockout match whose feeder game hasn't finished yet — either team slot
+  // holds a source label like "Gold Semi 1 W" instead of a real team id.
+  // Scoring/starting these leaves orphan match_sets and a serve pointer
+  // that can't resolve, so gate all controls behind an explicit banner.
+  const unresolvedTeams = !match.team_a_id || !match.team_b_id;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -194,6 +216,12 @@ export function AdminScoreboard({
             : "現場協調"}
         </p>
       </div>
+
+      {unresolvedTeams && (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          ⏳ 本場尚未確定隊伍(等待前一場結束)。前一場結束後再回來計分。
+        </p>
+      )}
 
       {/* Set tabs */}
       <Tabs
@@ -224,14 +252,14 @@ export function AdminScoreboard({
               score={current.score_a}
               onPlus={() => bump("a", 1)}
               onMinus={() => bump("a", -1)}
-              disabled={pending || status !== "live"}
+              disabled={pending || status !== "live" || unresolvedTeams}
             />
             <Side
               name={b}
               score={current.score_b}
               onPlus={() => bump("b", 1)}
               onMinus={() => bump("b", -1)}
-              disabled={pending || status !== "live"}
+              disabled={pending || status !== "live" || unresolvedTeams}
             />
           </div>
         </TabsContent>
@@ -244,7 +272,7 @@ export function AdminScoreboard({
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             開球
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             得分後自動換球
           </p>
         </div>
@@ -253,7 +281,7 @@ export function AdminScoreboard({
             variant={servingTeamId === match.team_a_id ? "default" : "outline"}
             size="sm"
             onClick={() => setServing("a")}
-            disabled={pending || status === "finished"}
+            disabled={pending || status === "finished" || unresolvedTeams}
           >
             🏐 {a}
           </Button>
@@ -261,7 +289,7 @@ export function AdminScoreboard({
             variant={servingTeamId === match.team_b_id ? "default" : "outline"}
             size="sm"
             onClick={() => setServing("b")}
-            disabled={pending || status === "finished"}
+            disabled={pending || status === "finished" || unresolvedTeams}
           >
             🏐 {b}
           </Button>
@@ -275,11 +303,11 @@ export function AdminScoreboard({
             勝局數
           </p>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <p className="text-center text-2xl font-semibold tabular-nums text-purple-300">
+            <p className="text-center text-2xl font-semibold tabular-nums text-amber-300">
               {setsWonA}
             </p>
             <p className="text-xl text-muted-foreground">:</p>
-            <p className="text-center text-2xl font-semibold tabular-nums text-purple-300">
+            <p className="text-center text-2xl font-semibold tabular-nums text-amber-300">
               {setsWonB}
             </p>
           </div>
@@ -306,7 +334,7 @@ export function AdminScoreboard({
           <Button
             className="col-span-2"
             onClick={() => setStatusAction("live")}
-            disabled={pending}
+            disabled={pending || unresolvedTeams}
           >
             開始比賽
           </Button>
@@ -314,29 +342,29 @@ export function AdminScoreboard({
         {status === "live" && (
           <>
             {autoWinner ? (
-              <Button
+              <FinishMatchButton
                 className="col-span-2"
-                onClick={() => setStatusAction("finished", autoWinner)}
-                disabled={pending}
-              >
-                結束比賽 ({autoWinner === "a" ? a : b} 勝)
-              </Button>
+                triggerLabel={`結束比賽 (${autoWinner === "a" ? a : b} 勝)`}
+                winnerName={autoWinner === "a" ? a : b}
+                pending={pending}
+                onConfirm={() => setStatusAction("finished", autoWinner)}
+              />
             ) : (
               <>
-                <Button
-                  variant="outline"
-                  onClick={() => setStatusAction("finished", "a")}
-                  disabled={pending}
-                >
-                  {a} 勝
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setStatusAction("finished", "b")}
-                  disabled={pending}
-                >
-                  {b} 勝
-                </Button>
+                <FinishMatchButton
+                  triggerLabel={`${a} 勝`}
+                  triggerVariant="outline"
+                  winnerName={a}
+                  pending={pending}
+                  onConfirm={() => setStatusAction("finished", "a")}
+                />
+                <FinishMatchButton
+                  triggerLabel={`${b} 勝`}
+                  triggerVariant="outline"
+                  winnerName={b}
+                  pending={pending}
+                  onConfirm={() => setStatusAction("finished", "b")}
+                />
               </>
             )}
           </>
@@ -364,6 +392,68 @@ function upsertSet(sets: MatchSet[], updated: MatchSet): MatchSet[] {
   return out;
 }
 
+// Ends the match after a second tap. Wraps the previous one-click buttons
+// because they were the easiest way to accidentally finish a live match —
+// especially in the ambiguous "auto-winner + amber tied banner" state where
+// the button is the only visible action.
+function FinishMatchButton({
+  triggerLabel,
+  triggerVariant = "default",
+  className,
+  winnerName,
+  pending,
+  onConfirm,
+}: {
+  triggerLabel: string;
+  triggerVariant?: "default" | "outline";
+  className?: string;
+  winnerName: string;
+  pending: boolean;
+  onConfirm: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant={triggerVariant}
+          disabled={pending}
+          className={className}
+        >
+          {triggerLabel}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <Flag className="size-5 text-amber-400" />
+            <DialogTitle>結束比賽?</DialogTitle>
+          </div>
+          <DialogDescription>
+            記為 <span className="font-semibold text-foreground">{winnerName}</span>{" "}
+            勝出。比賽狀態會變成 finished，再修正需要「重新開放」。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            取消
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              setOpen(false);
+              onConfirm();
+            }}
+            disabled={pending}
+          >
+            確認結束
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Side({
   name,
   score,
@@ -380,13 +470,22 @@ function Side({
   return (
     <div className="flex flex-col items-center gap-2">
       <p className="text-sm font-medium truncate w-full text-center">{name}</p>
+      {/* Score IS the +1 button. Ring + "+1" badge + active scale/bg make
+          the tap affordance obvious; without them referees on their first
+          match don't realise the number is interactive. */}
       <button
         type="button"
         onClick={onPlus}
         disabled={disabled}
-        className="w-full text-6xl font-bold tabular-nums bg-gradient-to-br from-orange-500 to-amber-400 bg-clip-text text-transparent py-2 rounded hover:bg-orange-500/10 disabled:opacity-50"
+        aria-label={`${name} 得分 +1`}
+        className="relative w-full py-3 rounded-xl ring-1 ring-orange-500/40 bg-orange-500/5 hover:bg-orange-500/15 active:bg-orange-500/25 active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
       >
-        {score}
+        <span className="absolute top-1.5 right-2 text-[10px] font-semibold uppercase tracking-wider text-orange-300/80">
+          點擊 +1
+        </span>
+        <span className="block text-6xl font-bold tabular-nums bg-gradient-to-br from-orange-500 to-amber-400 bg-clip-text text-transparent">
+          {score}
+        </span>
       </button>
       <Button
         variant="ghost"

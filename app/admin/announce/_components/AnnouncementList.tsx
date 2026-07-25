@@ -18,7 +18,10 @@ export function AnnouncementList({
       const res = await fetch(`/api/admin/announcement/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "刪除失敗");
+      }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));

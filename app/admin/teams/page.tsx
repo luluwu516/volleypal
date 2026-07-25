@@ -85,6 +85,7 @@ export default async function TeamsPage() {
         <GenerateTeamsButton
           tournamentId={tournament.id}
           existingCount={teams.length}
+          strategy={tournament.grouping_strategy}
           disabled={locked}
         />
         {!canGenerate && (

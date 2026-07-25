@@ -100,7 +100,14 @@ export default async function RootLayout({
             <BottomNav isAdmin={isAdmin} locked={locked} lockedMatchId={lockedMatchId} />
             <AnnouncementCenter />
           </AnnouncementsProvider>
-          <Toaster richColors theme="dark" position="top-center" />
+          {/* offset shoves toasts below the iOS notch / Dynamic Island so
+              they don't fight the status bar in PWA standalone mode. */}
+          <Toaster
+            richColors
+            theme="dark"
+            position="top-center"
+            offset={{ top: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+          />
           <RegisterServiceWorker />
         </ThemeProvider>
       </body>
