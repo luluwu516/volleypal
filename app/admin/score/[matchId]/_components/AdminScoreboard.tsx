@@ -186,13 +186,13 @@ export function AdminScoreboard({
             timeLimitMin={groupTimeLimitMin}
           />
         </div>
-        {match.referee_team_id && (
-          <p>
-            🦓 裁判：
-            {teams.find((t) => t.id === match.referee_team_id)?.name ??
-              match.referee_team_id.slice(0, 6)}
-          </p>
-        )}
+        <p>
+          🦓 裁判：
+          {match.referee_team_id
+            ? (teams.find((t) => t.id === match.referee_team_id)?.name ??
+              match.referee_team_id.slice(0, 6))
+            : "現場協調"}
+        </p>
       </div>
 
       {/* Set tabs */}

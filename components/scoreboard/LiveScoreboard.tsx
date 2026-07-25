@@ -97,6 +97,24 @@ export function LiveScoreboard() {
     setsByMatch.set(s.match_id, list);
   }
 
+  // One slot per court so Court 1 is always first, Court 2 second, etc.
+  // Fixed positions keep users oriented and expose the 「接下來」 section
+  // above the fold instead of hiding it below a tall vertical stack.
+  // If num_courts isn't set (partial DB state), fall back to whatever live
+  // matches we have, sorted by court.
+  const numCourts = data.tournament?.num_courts ?? 0;
+  const courtSlots =
+    numCourts > 0
+      ? Array.from({ length: numCourts }, (_, i) => {
+          const court = i + 1;
+          return { court, match: liveMatches.find((m) => m.court === court) };
+        })
+      : [...liveMatches]
+          .sort((a, b) => (a.court ?? 99) - (b.court ?? 99))
+          .map((m) => ({ court: m.court ?? 0, match: m }));
+
+  const anyLive = liveMatches.length > 0;
+
   return (
     <div className="flex flex-col gap-4">
       {stale && (
@@ -104,26 +122,43 @@ export function LiveScoreboard() {
           ⚠ 網路連線不穩定,顯示為上次成功載入的資料
         </p>
       )}
-      {liveMatches.length === 0 && (
+      {!anyLive && numCourts === 0 && (
         <p className="text-sm text-muted-foreground text-center py-6">
           目前沒有進行中的比賽
         </p>
       )}
-      {liveMatches.map((m) => (
-        <ScoreCard
-          key={m.id}
-          match={m}
-          teams={data.teams}
-          sets={(setsByMatch.get(m.id) ?? []).sort(
-            (a, b) => a.set_no - b.set_no,
-          )}
-          timeLimitMin={
-            m.phase === "group"
-              ? data.tournament?.group_stage_time_limit_min ?? null
-              : null
-          }
-        />
-      ))}
+      {courtSlots.length > 0 && (
+        // Edge-to-edge horizontal scroll: negate the layout's px-4 with -mx-4
+        // then pad back so the first card still aligns with content. `basis`
+        // leaves ~1.5rem of the next card peeking to signal swipeability.
+        <div
+          className="-mx-4 flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-pl-4 pl-4 pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {courtSlots.map((slot) => (
+            <div
+              key={slot.court}
+              className="snap-start shrink-0 basis-[calc(100%-2rem)]"
+            >
+              {slot.match ? (
+                <ScoreCard
+                  match={slot.match}
+                  teams={data.teams}
+                  sets={(setsByMatch.get(slot.match.id) ?? []).sort(
+                    (a, b) => a.set_no - b.set_no,
+                  )}
+                  timeLimitMin={
+                    slot.match.phase === "group"
+                      ? data.tournament?.group_stage_time_limit_min ?? null
+                      : null
+                  }
+                />
+              ) : (
+                <IdleCourtCard court={slot.court} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {upcoming.length > 0 && (
         <section className="mt-4">
           <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
@@ -145,12 +180,12 @@ export function LiveScoreboard() {
                     {m.scheduled_at && ` · ${fmtTime(m.scheduled_at)}`}
                   </span>
                 </div>
-                {m.referee_team_id && (
-                  <p className="text-[11px] text-muted-foreground">
-                    🦓 裁判：
-                    {teamName(m.referee_team_id, null, data.teams)}
-                  </p>
-                )}
+                <p className="text-[11px] text-muted-foreground">
+                  🦓 裁判：
+                  {m.referee_team_id
+                    ? teamName(m.referee_team_id, null, data.teams)
+                    : "現場協調"}
+                </p>
               </li>
             ))}
           </ul>
@@ -167,6 +202,17 @@ function teamName(
 ): string {
   if (id) return teams.find((t) => t.id === id)?.name ?? id.slice(0, 6);
   return source ?? "TBD";
+}
+
+function IdleCourtCard({ court }: { court: number }) {
+  return (
+    <div className="h-full rounded-2xl border-2 border-dashed border-zinc-600/70 bg-zinc-500/10 p-6 min-h-[240px] flex flex-col items-center justify-center gap-2 text-center">
+      <p className="text-[11px] uppercase tracking-widest text-zinc-400 font-medium">
+        Court {court}
+      </p>
+      <p className="text-lg font-semibold text-zinc-300">目前無比賽</p>
+    </div>
+  );
 }
 
 function ScoreCard({
@@ -225,11 +271,12 @@ function ScoreCard({
           timeLimitMin={timeLimitMin}
         />
       </div>
-      {match.referee_team_id && (
-        <p className="text-[11px] text-muted-foreground text-center">
-          🦓 裁判：{teamName(match.referee_team_id, null, teams)}
-        </p>
-      )}
+      <p className="text-[11px] text-muted-foreground text-center">
+        🦓 裁判：
+        {match.referee_team_id
+          ? teamName(match.referee_team_id, null, teams)
+          : "現場協調"}
+      </p>
 
       {/* Team names + ball possession */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
