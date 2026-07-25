@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Match, MatchSet, Team, Tournament } from "@/lib/db/types";
 import { MatchTimer } from "@/components/MatchTimer";
+import { EmptyState } from "@/components/EmptyState";
 import { fmtTime } from "@/lib/formatTime";
 
 interface ApiPayload {
@@ -123,9 +124,13 @@ export function LiveScoreboard() {
         </p>
       )}
       {!anyLive && numCourts === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-6">
-          目前沒有進行中的比賽
-        </p>
+        <div className="pt-6">
+          <EmptyState
+            glyph="⏸"
+            title="目前沒有進行中的比賽"
+            body="賽程開始後,場上的分數會即時更新在這裡。"
+          />
+        </div>
       )}
       {courtSlots.length > 0 && (
         // Edge-to-edge horizontal scroll: negate the layout's px-4 with -mx-4

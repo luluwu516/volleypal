@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Announcement } from "@/lib/db/types";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/EmptyState";
 
 export function AnnouncementList({
   announcements,
@@ -29,9 +30,11 @@ export function AnnouncementList({
   }
   if (announcements.length === 0)
     return (
-      <p className="text-sm text-muted-foreground text-center py-4">
-        目前沒有廣播
-      </p>
+      <EmptyState
+        glyph="📣"
+        title="目前沒有廣播"
+        body="用上方表單發佈第一則,球員 PWA 上會即時收到通知。"
+      />
     );
   return (
     <ul className="flex flex-col gap-2">

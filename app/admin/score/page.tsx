@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/repository";
 import { Badge } from "@/components/ui/badge";
 import { BackLink } from "@/components/nav/BackLink";
+import { EmptyState } from "@/components/EmptyState";
 import { fmtDateTime } from "@/lib/formatTime";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +25,12 @@ export default async function ScoreListPage() {
       <BackLink />
       <h1 className="text-xl font-bold">挑場比賽</h1>
       {matches.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-6">
-          沒有比賽
-        </p>
+        <EmptyState
+          glyph="🏐"
+          title="還沒有比賽"
+          body="先到賽程頁生成賽程,計分頁才會出現可挑選的場次。"
+          cta={{ href: "/admin/scheduler", label: "去建立賽程" }}
+        />
       )}
       {matches.map((m) => (
         <Link

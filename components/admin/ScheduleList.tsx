@@ -1,5 +1,6 @@
 import type { Match, Team } from "@/lib/db/types";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/EmptyState";
 import { fmtTime } from "@/lib/formatTime";
 import { RefereePicker } from "@/components/admin/RefereePicker";
 
@@ -35,9 +36,11 @@ export function ScheduleList({
 }) {
   if (matches.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-6">
-        尚未生成賽程
-      </p>
+      <EmptyState
+        glyph="📅"
+        title="尚未生成賽程"
+        body="填好上方的場地數、每場長度、起始時間,按下「生成賽程」就會自動排出小組賽 + 淘汰賽。"
+      />
     );
   }
 

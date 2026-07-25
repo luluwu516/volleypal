@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { EmptyState } from "@/components/EmptyState";
 
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
@@ -83,9 +84,11 @@ export function RosterList({
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-6">
-        尚未有報名資料
-      </p>
+      <EmptyState
+        glyph="📋"
+        title="尚未有報名資料"
+        body="等 Google 表單有人送出後,這裡會自動同步。"
+      />
     );
   }
 
