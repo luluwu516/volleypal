@@ -39,7 +39,12 @@ export default async function SchedulerPage() {
 
       <section className="mt-2">
         <h2 className="text-sm font-semibold mb-2">已排定賽程</h2>
-        <ScheduleList matches={matches} teams={teams} />
+        <ScheduleList
+          matches={matches}
+          teams={teams}
+          editable
+          disabled={locked}
+        />
       </section>
     </div>
   );

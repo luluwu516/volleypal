@@ -1,6 +1,7 @@
 import type { Match, Team } from "@/lib/db/types";
 import { Badge } from "@/components/ui/badge";
 import { fmtTime } from "@/lib/formatTime";
+import { RefereePicker } from "@/components/admin/RefereePicker";
 
 function teamName(
   id: string | null,
@@ -24,9 +25,13 @@ const PHASE_LABEL: Record<string, string> = {
 export function ScheduleList({
   matches,
   teams,
+  editable = false,
+  disabled = false,
 }: {
   matches: Match[];
   teams: Team[];
+  editable?: boolean;
+  disabled?: boolean;
 }) {
   if (matches.length === 0) {
     return (
@@ -87,11 +92,24 @@ export function ScheduleList({
                       </Badge>
                     )}
                   </div>
-                  {m.referee_team_id && (
-                    <div className="text-[11px] text-muted-foreground pl-14">
-                      🦓 裁判：{teamName(m.referee_team_id, null, teams)}
-                    </div>
-                  )}
+                  <div className="text-[11px] text-muted-foreground pl-14 flex items-center gap-2">
+                    <span>裁判：</span>
+                    {editable ? (
+                      <RefereePicker
+                        match={m}
+                        slotMatches={slotMatches}
+                        teams={teams}
+                        disabled={disabled}
+                      />
+                    ) : (
+                      <span>
+                        🦓{" "}
+                        {m.referee_team_id
+                          ? teamName(m.referee_team_id, null, teams)
+                          : "現場協調"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
           </div>
