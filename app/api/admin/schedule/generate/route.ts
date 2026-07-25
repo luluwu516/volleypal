@@ -3,12 +3,15 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { buildFullSchedule, type SchedulerTeam } from "@/lib/scheduler";
+import { findAdminByPin } from "@/lib/auth/pin";
+import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 
 const Body = z.object({
   tournamentId: z.string().uuid(),
   numCourts: z.number().int().min(1).max(8),
   matchDurationMin: z.number().int().min(10).max(180),
   startsAt: z.string(),
+  pin: z.string().min(4).max(32).optional(),
 });
 
 export async function POST(req: Request) {
@@ -21,6 +24,32 @@ export async function POST(req: Request) {
   }
   const body = Body.parse(await req.json());
   const db = supabaseAdmin();
+
+  // Regeneration guard: if the tournament already has a schedule, require the
+  // logged-in admin to re-enter their PIN. Prevents fat-finger regenerations
+  // that would wipe pending matches (referees, adjustments etc.) mid-event.
+  const { count: existingCount } = await db
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", body.tournamentId);
+  if ((existingCount ?? 0) > 0) {
+    if (!body.pin) {
+      return NextResponse.json(
+        { error: "pin_required", message: "已有賽程,請輸入 PIN 確認重排" },
+        { status: 401 },
+      );
+    }
+    if (!(await tryRateLimit(`schedule-regen:${clientIp(req)}`, 5, 60))) {
+      return NextResponse.json(
+        { error: "嘗試次數過多,請稍後再試" },
+        { status: 429 },
+      );
+    }
+    const admin = await findAdminByPin(body.pin);
+    if (!admin || admin.id !== sess.adminId) {
+      return NextResponse.json({ error: "PIN 不正確" }, { status: 401 });
+    }
+  }
 
   const { data: teams, error: tErr } = await db
     .from("teams")

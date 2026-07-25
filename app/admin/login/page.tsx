@@ -67,9 +67,24 @@ function LoginForm() {
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
-            <Button type="submit" disabled={busy || pin.length < 4}>
-              {busy ? "登入中…" : "登入"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                disabled={busy}
+                className="flex-1"
+              >
+                返回
+              </Button>
+              <Button
+                type="submit"
+                disabled={busy || pin.length < 4}
+                className="flex-1"
+              >
+                {busy ? "登入中…" : "登入"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
