@@ -1,10 +1,37 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Trophy, Tv, Settings, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationBell";
+
+const LIVE_POLL_MS = 15_000;
+
+function useHasLiveMatch() {
+  const [hasLive, setHasLive] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const fetchOnce = async () => {
+      try {
+        const res = await fetch("/api/live-status", { cache: "no-store" });
+        if (!res.ok) return;
+        const j = (await res.json()) as { hasLive?: boolean };
+        if (alive) setHasLive(Boolean(j.hasLive));
+      } catch {
+        // network blip — keep last-known value
+      }
+    };
+    fetchOnce();
+    const id = setInterval(fetchOnce, LIVE_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+  return hasLive;
+}
 
 export interface BottomNavProps {
   isAdmin?: boolean;
@@ -41,6 +68,7 @@ export function BottomNav({
   lockedMatchId,
 }: BottomNavProps) {
   const pathname = usePathname() || "/";
+  const hasLive = useHasLiveMatch();
   const adminTab = locked
     ? {
         href: lockedMatchId ? `/admin/score/${lockedMatchId}` : "/admin/score",
@@ -63,11 +91,14 @@ export function BottomNav({
         {tabs.map((t) => {
           const active = t.match(pathname);
           const Icon = t.icon;
+          const showLiveDot = t.href === "/live" && hasLive;
           return (
             <li key={t.href} className="flex">
               <Link
                 href={t.href}
-                aria-label={t.label}
+                aria-label={
+                  showLiveDot ? `${t.label},有比賽進行中` : t.label
+                }
                 className={cn(
                   "flex-1 flex items-center justify-center py-4 transition-colors",
                   active
@@ -75,7 +106,15 @@ export function BottomNav({
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="size-6" />
+                <span className="relative">
+                  <Icon className="size-6" />
+                  {showLiveDot && (
+                    <span className="absolute -top-0.5 -right-0.5 flex size-2.5">
+                      <span className="absolute inline-flex size-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                      <span className="relative inline-flex size-2.5 rounded-full bg-red-500" />
+                    </span>
+                  )}
+                </span>
               </Link>
             </li>
           );
