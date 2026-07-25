@@ -27,31 +27,29 @@ const DEFAULT_HOURS = 4;
 // in the tournament and a fat-finger tap should feel weighty.
 const LEVEL_OPTIONS: Array<{
   value: "info" | "warn" | "urgent";
-  zh: string;
   dot: string;
   selected: string;
   idle: string;
 }> = [
   {
     value: "info",
-    zh: "一般",
     dot: "bg-sky-400",
     selected: "border-sky-400 bg-sky-500/20 text-sky-100",
     idle: "border-border/60 text-muted-foreground hover:bg-white/5",
   },
   {
     value: "warn",
-    zh: "提醒",
     dot: "bg-amber-400",
     selected: "border-amber-400 bg-amber-500/20 text-amber-100",
     idle: "border-border/60 text-muted-foreground hover:bg-amber-500/5",
   },
   {
     value: "urgent",
-    zh: "緊急",
     dot: "bg-red-500",
     selected: "border-red-500 bg-red-500/25 text-red-100 shadow-sm shadow-red-500/30",
-    idle: "border-red-500/40 text-red-300/80 hover:bg-red-500/10",
+    // Idle uses the same neutral border as the other two — the red dot is
+    // enough to identify severity, an idle red frame reads as "selected".
+    idle: "border-border/60 text-muted-foreground hover:border-red-500/50 hover:bg-red-500/5 hover:text-red-200",
   },
 ];
 
@@ -99,7 +97,10 @@ export function AnnounceForm({
   }
   return (
     <form onSubmit={submit} className="rounded-lg border p-3">
-      <fieldset disabled={disabled} className="flex flex-col gap-3 disabled:opacity-60">
+      <fieldset
+        disabled={disabled}
+        className="flex flex-col gap-3 min-w-0 disabled:opacity-60"
+      >
         <Label htmlFor="body">訊息</Label>
         <Input
           id="body"
@@ -112,7 +113,7 @@ export function AnnounceForm({
         />
         <div>
           <Label className="text-xs text-muted-foreground">等級</Label>
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="grid grid-cols-3 gap-2 mt-1.5">
             {LEVEL_OPTIONS.map((opt) => {
               const selected = level === opt.value;
               return (
@@ -120,20 +121,17 @@ export function AnnounceForm({
                   key={opt.value}
                   type="button"
                   onClick={() => setLevel(opt.value)}
-                  aria-label={`等級 ${opt.zh}`}
+                  aria-label={opt.value}
                   aria-pressed={selected}
-                  className={`inline-flex items-center gap-1.5 rounded-md border min-h-9 px-3 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-md border min-h-9 px-2 text-xs uppercase tracking-wider transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
                     selected ? opt.selected : opt.idle
                   }`}
                 >
                   <span
-                    className={`size-2 rounded-full ${opt.dot}`}
+                    className={`size-2 rounded-full shrink-0 ${opt.dot}`}
                     aria-hidden
                   />
-                  <span className="font-medium">{opt.zh}</span>
-                  <span className="text-[10px] uppercase tracking-wider opacity-70">
-                    {opt.value}
-                  </span>
+                  <span className="font-medium">{opt.value}</span>
                 </button>
               );
             })}
