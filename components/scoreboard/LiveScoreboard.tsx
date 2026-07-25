@@ -1,10 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { WifiOff } from "lucide-react";
 import type { Match, MatchSet, Team, Tournament } from "@/lib/db/types";
 import { MatchTimer } from "@/components/MatchTimer";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/ui/button";
 import { fmtTime } from "@/lib/formatTime";
+
+// Small hook wrapping navigator.onLine. Tells us whether the device thinks
+// it has connectivity so we can differentiate "server error" from "you're
+// on airplane mode and there's nothing we can do".
+function useOnline(): boolean {
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
+}
 
 interface ApiPayload {
   tournament: Tournament | null;
@@ -21,6 +43,8 @@ export function LiveScoreboard() {
   // stale = we're currently in a network-blip state but showing the last-good data.
   const [stale, setStale] = useState(false);
   const [initialError, setInitialError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
+  const online = useOnline();
   // Track first-fetch state via ref so the polling effect doesn't re-subscribe
   // every time we get a new payload.
   const hasDataRef = useRef(false);
@@ -71,14 +95,39 @@ export function LiveScoreboard() {
       alive = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, []);
+    // retryTick is included so pressing "再試一次" while offline actually
+    // re-runs the fetch loop from scratch.
+  }, [retryTick]);
 
-  if (!data && initialError)
+  // Cold-start with no data. Distinguish "device is offline" (actionable)
+  // from "we hit the server but it failed" (server-side issue).
+  if (!data && initialError) {
     return (
-      <p className="text-sm text-destructive text-center py-6">
-        無法載入即時比分:{initialError}
-      </p>
+      <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        <div className="size-14 rounded-full bg-muted/40 grid place-items-center">
+          <WifiOff className="size-6 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium">
+          {online ? "無法載入即時比分" : "目前離線"}
+        </p>
+        <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+          {online
+            ? "伺服器暫時沒有回應,請稍後再試。"
+            : "檢查一下手機的網路連線,連上後點下方按鈕重試。"}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setInitialError(null);
+            setRetryTick((t) => t + 1);
+          }}
+        >
+          再試一次
+        </Button>
+      </div>
     );
+  }
   if (!data)
     return (
       <p className="text-sm text-muted-foreground text-center py-6">
@@ -120,7 +169,9 @@ export function LiveScoreboard() {
     <div className="flex flex-col gap-4">
       {stale && (
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 text-center">
-          ⚠ 網路連線不穩定,顯示為上次成功載入的資料
+          {online
+            ? "⚠ 網路連線不穩定,顯示為上次成功載入的資料"
+            : "⚠ 目前離線,顯示為上次成功載入的資料"}
         </p>
       )}
       {!anyLive && numCourts === 0 && (
