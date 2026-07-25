@@ -12,7 +12,7 @@ import {
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
   earth: "bg-amber-600/80",
-  air: "bg-sky-400/80",
+  air: "bg-violet-400/80",
   water: "bg-cyan-500/80",
 };
 

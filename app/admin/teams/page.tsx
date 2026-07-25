@@ -67,9 +67,15 @@ export default async function TeamsPage() {
             目前分隊
           </h2>
           <TeamsBoard
+            // Remount when the underlying team set changes so the internal
+            // assignment state re-initialises after 一鍵分隊 / import.
+            // Otherwise it holds stale team_id → registration_id mappings
+            // and every card shows empty until a hard refresh.
+            key={teams.map((t) => t.id).join(",")}
             teams={teams}
             registrations={registrations}
             initialMembers={members ?? []}
+            strategy={tournament.grouping_strategy}
             disabled={locked}
           />
         </section>

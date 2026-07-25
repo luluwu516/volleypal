@@ -16,7 +16,7 @@ const Body = z.object({ tournamentId: z.string().uuid() });
 const ELEMENT_COLORS = {
   fire: "#ef4444",
   earth: "#a16207",
-  air: "#60a5fa",
+  air: "#a78bfa",
   water: "#06b6d4",
 } as const;
 

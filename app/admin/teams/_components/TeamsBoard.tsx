@@ -1,22 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowRightLeft } from "lucide-react";
-import type { Registration, Team } from "@/lib/db/types";
+import { ArrowRightLeft, Pencil } from "lucide-react";
+import type { GroupingStrategy, Registration, Team } from "@/lib/db/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { signFromBirthday } from "@/lib/zodiac";
+import { elementFromBirthday } from "@/lib/zodiac";
+import { MBTI_TO_TEMPERAMENT } from "@/lib/mbti";
 
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
   earth: "bg-amber-600/80",
-  air: "bg-sky-400/80",
+  air: "bg-violet-400/80",
   water: "bg-cyan-500/80",
 };
 
@@ -36,7 +39,31 @@ interface Props {
   teams: Team[];
   registrations: Registration[];
   initialMembers: Member[];
+  strategy: GroupingStrategy;
   disabled?: boolean;
+}
+
+// Whether the strategy uses zodiac elements or MBTI temperaments to label
+// individual players (regardless of together/mixed).
+function attributeKind(strategy: GroupingStrategy): "element" | "temperament" {
+  return strategy === "mbti_together" || strategy === "mbti_mixed"
+    ? "temperament"
+    : "element";
+}
+
+function playerAttribute(
+  reg: Registration,
+  kind: "element" | "temperament",
+): string | null {
+  if (kind === "element") {
+    if (!reg.birthday) return null;
+    try {
+      return elementFromBirthday(new Date(reg.birthday + "T12:00:00"));
+    } catch {
+      return null;
+    }
+  }
+  return reg.mbti ? MBTI_TO_TEMPERAMENT[reg.mbti] : null;
 }
 
 function computeMetrics(members: Registration[]) {
@@ -52,8 +79,11 @@ export function TeamsBoard({
   teams,
   registrations,
   initialMembers,
+  strategy,
   disabled = false,
 }: Props) {
+  const router = useRouter();
+  const kind = attributeKind(strategy);
   const regById = useMemo(
     () => new Map(registrations.map((r) => [r.id, r])),
     [registrations],
@@ -146,6 +176,12 @@ export function TeamsBoard({
                     </span>
                   )}
                   <span className="truncate">{t.name}</span>
+                  {!disabled && (
+                    <RenamePopover
+                      team={t}
+                      onRenamed={() => router.refresh()}
+                    />
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-normal shrink-0 tabular-nums">
                   <span>{teamMembers.length} 人</span>
@@ -167,15 +203,31 @@ export function TeamsBoard({
               ) : (
                 <ul className="flex flex-col gap-1">
                   {teamMembers.map((m) => {
-                    const sign = m.birthday
-                      ? signFromBirthday(new Date(m.birthday + "T12:00:00"))
-                      : null;
+                    const attr = playerAttribute(m, kind);
                     return (
                       <li
                         key={m.id}
                         className="flex items-center justify-between text-sm border-t border-border/40 first:border-t-0 py-1.5"
                       >
                         <div className="flex items-center gap-2 min-w-0">
+                          {kind === "element" && attr && (
+                            <span
+                              className={`size-2 rounded-full shrink-0 ${ELEMENT_DOT[attr] ?? "bg-muted"}`}
+                              aria-label={attr}
+                              title={attr}
+                            />
+                          )}
+                          {kind === "temperament" &&
+                            attr &&
+                            TEMPERAMENT_STYLE[attr] && (
+                              <span
+                                className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold tracking-wider ${TEMPERAMENT_STYLE[attr].className}`}
+                                aria-label={attr}
+                                title={attr}
+                              >
+                                {TEMPERAMENT_STYLE[attr].label}
+                              </span>
+                            )}
                           <span className="font-medium truncate">{m.name}</span>
                           {m.gender && (
                             <span className="text-xs text-muted-foreground shrink-0">
@@ -191,7 +243,6 @@ export function TeamsBoard({
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-                          {sign && <span className="opacity-60">{sign}</span>}
                           <span className="tabular-nums">
                             Lv{m.skill_level ?? "?"}
                           </span>
@@ -213,6 +264,93 @@ export function TeamsBoard({
         );
       })}
     </div>
+  );
+}
+
+function RenamePopover({
+  team,
+  onRenamed,
+}: {
+  team: Team;
+  onRenamed: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(team.name);
+  const [busy, setBusy] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === team.name) {
+      setOpen(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/teams/${team.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "改名失敗");
+      }
+      setOpen(false);
+      onRenamed();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setName(team.name);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="shrink-0 size-6 grid place-items-center rounded text-muted-foreground hover:bg-white/10 hover:text-foreground"
+          aria-label="改名"
+        >
+          <Pencil className="size-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        <form onSubmit={save} className="flex flex-col gap-2">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            隊伍名稱
+          </p>
+          <Input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={busy}
+            maxLength={60}
+          />
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={busy}
+            >
+              取消
+            </Button>
+            <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+              {busy ? "儲存…" : "儲存"}
+            </Button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
   );
 }
 

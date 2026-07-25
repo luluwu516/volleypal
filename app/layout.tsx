@@ -100,7 +100,7 @@ export default async function RootLayout({
             <BottomNav isAdmin={isAdmin} locked={locked} lockedMatchId={lockedMatchId} />
             <AnnouncementCenter />
           </AnnouncementsProvider>
-          <Toaster richColors theme="dark" />
+          <Toaster richColors theme="dark" position="top-center" />
           <RegisterServiceWorker />
         </ThemeProvider>
       </body>
