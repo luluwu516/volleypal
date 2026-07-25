@@ -330,6 +330,9 @@ function RenamePopover({
             onChange={(e) => setName(e.target.value)}
             disabled={busy}
             maxLength={60}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
           />
           <div className="flex gap-2 justify-end">
             <Button

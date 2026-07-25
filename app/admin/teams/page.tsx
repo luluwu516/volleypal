@@ -97,7 +97,10 @@ export default async function TeamsPage() {
         </section>
       )}
 
-      <section className="flex flex-col gap-2 sticky bottom-20 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 border-t border-border/30">
+      {/* Sticks above BottomNav (≈4rem tall) plus the notched-phone safe
+          area, so the button never gets hidden behind the nav on iPhones
+          with a home indicator. */}
+      <section className="flex flex-col gap-2 sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 border-t border-border/30">
         <GenerateTeamsButton
           tournamentId={tournament.id}
           existingCount={teams.length}

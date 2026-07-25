@@ -96,8 +96,12 @@ export function RosterList({
     <div className="rounded-lg border overflow-hidden">
       <div className="px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 grid grid-cols-[1fr_auto_auto_auto_4rem] gap-2 items-center">
         <span>名字</span>
-        <span className="w-6 text-center">性</span>
-        <span className="w-8 text-center">位</span>
+        <span className="w-6 text-center" title="性別" aria-label="性別">
+          ♀♂
+        </span>
+        <span className="w-8 text-center" title="舉球員" aria-label="舉球員">
+          🙌🏻
+        </span>
         <span className="w-12 text-center">星座</span>
         <span className="text-center">實力</span>
       </div>

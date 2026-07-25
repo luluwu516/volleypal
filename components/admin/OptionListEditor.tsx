@@ -100,6 +100,9 @@ export function OptionListEditor({
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             className="flex-1"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();

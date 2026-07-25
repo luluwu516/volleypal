@@ -52,6 +52,27 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
   const [nearby, setNearby] = useState(tournament.venue_nearby ?? "");
   const [busy, setBusy] = useState(false);
 
+  // Any field diverging from the row we rendered from is a dirty edit.
+  // Drives the badge next to the Save button plus the disabled state so
+  // admins can tell at a glance whether Save has anything to do.
+  const dirty =
+    name !== tournament.name ||
+    year !== tournament.year ||
+    strategy !== tournament.grouping_strategy ||
+    numCourts !== tournament.num_courts ||
+    matchDuration !== tournament.match_duration_min ||
+    groupTimeLimit !== (tournament.group_stage_time_limit_min ?? 0) ||
+    rulesUrl !== (tournament.rules_doc_url ?? "") ||
+    regUrl !== (tournament.registration_form_url ?? "") ||
+    waiverUrl !== (tournament.waiver_url ?? "") ||
+    address !== (tournament.venue_address ?? "") ||
+    transport !== (tournament.venue_transport ?? "") ||
+    lunch !== (tournament.venue_lunch_options ?? "") ||
+    drink !== (tournament.venue_drink_options ?? "") ||
+    dinnerName !== (tournament.dinner_venue_name ?? "") ||
+    dinnerAddress !== (tournament.dinner_venue_address ?? "") ||
+    nearby !== (tournament.venue_nearby ?? "");
+
   async function save() {
     setBusy(true);
     try {
@@ -109,6 +130,9 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
           />
         </div>
         <div>
@@ -227,6 +251,9 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="例如：123 Main St, Los Angeles, CA 90001"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div>
@@ -238,6 +265,9 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
                 value={transport}
                 onChange={(e) => setTransport(e.target.value)}
                 placeholder="例如：地鐵 7 號線 XX 站 5 號出口 步行 8 分鐘"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div>
@@ -248,7 +278,10 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 value={nearby}
                 onChange={(e) => setNearby(e.target.value)}
-                placeholder="例如：旁邊 7-11，急救藥局在轉角"
+                placeholder="例如:旁邊 7-11,急救藥局在轉角"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
           </div>
@@ -265,7 +298,10 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
                 id="dinnerName"
                 value={dinnerName}
                 onChange={(e) => setDinnerName(e.target.value)}
-                placeholder="例如：鼎泰豐"
+                placeholder="例如:鼎泰豐"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div>
@@ -274,7 +310,10 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
                 id="dinnerAddr"
                 value={dinnerAddress}
                 onChange={(e) => setDinnerAddress(e.target.value)}
-                placeholder="例如：1108 S Baldwin Ave, Arcadia, CA 91007"
+                placeholder="例如:1108 S Baldwin Ave, Arcadia, CA 91007"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div>
@@ -296,9 +335,17 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           </div>
         </div>
 
-        <Button onClick={save} disabled={busy}>
-          {busy ? "儲存中…" : "儲存"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={save} disabled={busy || !dirty} className="flex-1">
+            {busy ? "儲存中…" : "儲存"}
+          </Button>
+          {dirty && !busy && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/40 px-2 py-1 text-[11px] text-amber-200">
+              <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+              有未儲存變更
+            </span>
+          )}
+        </div>
         </fieldset>
       </CardContent>
     </Card>

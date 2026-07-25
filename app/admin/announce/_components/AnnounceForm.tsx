@@ -105,7 +105,10 @@ export function AnnounceForm({
           id="body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="例如：午餐已到，請至大廳領取"
+          placeholder="例如:午餐已到,請至大廳領取"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
         />
         <div>
           <Label className="text-xs text-muted-foreground">等級</Label>
