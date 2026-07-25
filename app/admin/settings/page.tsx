@@ -2,6 +2,7 @@ import { getCurrentTournament } from "@/lib/db/repository";
 import { TournamentSettingsForm } from "../_components/TournamentSettingsForm";
 import { BackLink } from "@/components/nav/BackLink";
 import { LockedBanner } from "@/components/LockedBanner";
+import { EmptyState } from "@/components/EmptyState";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { ExportButton } from "./_components/ExportButton";
 import { ImportButton } from "./_components/ImportButton";
@@ -9,7 +10,7 @@ import { ImportButton } from "./_components/ImportButton";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const tournament = await getCurrentTournament().catch(() => null);
+  const tournament = await getCurrentTournament();
   const sess = await getAdminSession();
   const locked = Boolean(sess.locked);
   return (
@@ -34,7 +35,11 @@ export default async function SettingsPage() {
           </section>
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">沒有賽事</p>
+        <EmptyState
+          glyph="🗂"
+          title="尚未建立賽事"
+          body="請到 Supabase Table Editor 建立一筆 tournaments 資料,或從備份 JSON 匯入。"
+        />
       )}
     </div>
   );

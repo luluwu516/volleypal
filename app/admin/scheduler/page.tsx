@@ -7,14 +7,28 @@ import { GenerateScheduleForm } from "./_components/GenerateScheduleForm";
 import { BackLink } from "@/components/nav/BackLink";
 import { ScheduleList } from "@/components/admin/ScheduleList";
 import { LockedBanner } from "@/components/LockedBanner";
+import { EmptyState } from "@/components/EmptyState";
 import { getAdminSession } from "@/lib/auth/getSession";
 
 export const dynamic = "force-dynamic";
 
 export default async function SchedulerPage() {
-  const tournament = await getCurrentTournament().catch(() => null);
-  if (!tournament) return <p>沒有賽事</p>;
+  const tournament = await getCurrentTournament();
   const sess = await getAdminSession();
+  if (!tournament) {
+    return (
+      <div className="flex flex-col gap-4 pt-2">
+        <BackLink />
+        <h1 className="text-xl font-bold">賽程</h1>
+        <EmptyState
+          glyph="🗂"
+          title="尚未建立賽事"
+          body="請先到管理首頁完成賽事設定,再回來這裡排程。"
+          cta={{ href: "/admin", label: "回管理首頁" }}
+        />
+      </div>
+    );
+  }
   const locked = Boolean(sess.locked);
   const [matches, teams] = await Promise.all([
     listMatches(tournament.id),

@@ -12,8 +12,21 @@ import { fmtDateTime } from "@/lib/formatTime";
 export const dynamic = "force-dynamic";
 
 export default async function ScoreListPage() {
-  const tournament = await getCurrentTournament().catch(() => null);
-  if (!tournament) return <p>沒有賽事</p>;
+  const tournament = await getCurrentTournament();
+  if (!tournament) {
+    return (
+      <div className="flex flex-col gap-4 pt-2">
+        <BackLink />
+        <h1 className="text-xl font-bold">挑場比賽</h1>
+        <EmptyState
+          glyph="🗂"
+          title="尚未建立賽事"
+          body="請先到管理首頁完成賽事設定,再回來這裡挑比賽計分。"
+          cta={{ href: "/admin", label: "回管理首頁" }}
+        />
+      </div>
+    );
+  }
   const [matches, teams] = await Promise.all([
     listMatches(tournament.id),
     listTeams(tournament.id),
