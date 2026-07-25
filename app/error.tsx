@@ -16,6 +16,25 @@ export default function RouteError({
 }) {
   useEffect(() => {
     console.error("route error", error);
+    // Fire-and-forget alert. Never blocks render or awaits.
+    fetch("/api/report-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `Route error: ${error.message.slice(0, 100)}`,
+        detail: [
+          error.stack ?? "(no stack)",
+          error.digest ? `digest: ${error.digest}` : "",
+          `URL: ${typeof window !== "undefined" ? window.location.href : "?"}`,
+          `UA:  ${typeof navigator !== "undefined" ? navigator.userAgent : "?"}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        source: "client:error-boundary",
+      }),
+    }).catch(() => {
+      // Alerting is best-effort — don't crash the error UI itself.
+    });
   }, [error]);
 
   return (

@@ -74,7 +74,7 @@ export function ImportButton() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "匯入失敗");
-      toast.success("匯入完成,頁面即將重新載入");
+      toast.success("匯入完成，頁面即將重新載入");
       setOpen(false);
       setPin("");
       setPayload(null);
@@ -125,8 +125,8 @@ export function ImportButton() {
               <DialogTitle>確認覆蓋目前賽事</DialogTitle>
             </div>
             <DialogDescription>
-              此操作會刪除目前所有賽事資料(隊伍、比賽、比分、廣播…),並以檔案內容整份取代。
-              無法復原,請確定你有留當前的匯出檔。
+              此操作會刪除目前所有賽事資料(隊伍、比賽、比分、廣播…)，並以檔案內容整份取代。
+              無法復原，請確定你有留當前的匯出檔。
             </DialogDescription>
             <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
               {summary}

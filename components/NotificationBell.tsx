@@ -33,7 +33,7 @@ function formatTimestamp(iso: string): string {
 }
 
 export function NotificationBell() {
-  const { items, dismissed, dismiss, markAllRead, unreadCount } =
+  const { items, dismissed, dismiss, markAllRead, unreadCount, stale } =
     useAnnouncements();
   return (
     <Sheet>
@@ -72,6 +72,11 @@ export function NotificationBell() {
           </div>
         </SheetHeader>
         <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1 pb-1">
+          {stale && (
+            <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">
+              ⚠ 無法載入最新廣播,顯示為上次成功載入的資料
+            </p>
+          )}
           {items.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               目前沒有廣播

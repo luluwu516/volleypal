@@ -30,7 +30,7 @@ export default async function SettingsPage() {
               {!locked && <ImportButton />}
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              匯出整份賽事資料為 JSON。匯入會覆蓋目前賽事,需再次輸入 PIN 確認。
+              匯出整份賽事資料為 JSON。匯入會覆蓋目前賽事，需再次輸入 PIN 確認。
             </p>
           </section>
         </>
@@ -38,7 +38,7 @@ export default async function SettingsPage() {
         <EmptyState
           glyph="🗂"
           title="尚未建立賽事"
-          body="請到 Supabase Table Editor 建立一筆 tournaments 資料,或從備份 JSON 匯入。"
+          body="請到 Supabase Table Editor 建立一筆 tournaments 資料，或從備份 JSON 匯入。"
         />
       )}
     </div>

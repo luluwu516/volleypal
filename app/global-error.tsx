@@ -12,6 +12,21 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("global error", error);
+    fetch("/api/report-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `Global error: ${error.message.slice(0, 100)}`,
+        detail: [
+          error.stack ?? "(no stack)",
+          error.digest ? `digest: ${error.digest}` : "",
+          `URL: ${typeof window !== "undefined" ? window.location.href : "?"}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        source: "client:global-error",
+      }),
+    }).catch(() => {});
   }, [error]);
 
   return (

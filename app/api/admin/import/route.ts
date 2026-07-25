@@ -70,12 +70,73 @@ export async function POST(req: Request) {
     );
   }
 
-  // Wipe current tournament (if any). CASCADE handles teams/matches/etc.
-  const { data: existing } = await db
+  // Auto-snapshot before we touch anything. A bad payload (short field, wrong
+  // enum) can bail mid-insert leaving the tournament in a mangled state — this
+  // row is the "put back what was there" tape. Manual recovery: query
+  // import_backups by created_at, re-POST the payload column to /api/admin/import.
+  const { data: existingTournaments } = await db
     .from("tournaments")
-    .select("id")
+    .select("id, name")
     .order("created_at", { ascending: false });
-  for (const t of existing ?? []) {
+  const anyExisting = (existingTournaments ?? []).length > 0;
+  if (anyExisting) {
+    // Build the same shape /api/admin/export produces so the backup can be
+    // fed straight back through /api/admin/import.
+    const tid = existingTournaments![0].id;
+    const [tRow, teamsRes, membersRes, matchesRes, setsRes, regsRes, annRes] =
+      await Promise.all([
+        db.from("tournaments").select("*").eq("id", tid).maybeSingle(),
+        db.from("teams").select("*").eq("tournament_id", tid),
+        db
+          .from("teams")
+          .select("id")
+          .eq("tournament_id", tid)
+          .then(async (r) => {
+            const ids = (r.data ?? []).map((t: { id: string }) => t.id);
+            if (ids.length === 0) return { data: [] as unknown[] };
+            return db.from("team_members").select("*").in("team_id", ids);
+          }),
+        db.from("matches").select("*").eq("tournament_id", tid),
+        db
+          .from("matches")
+          .select("id")
+          .eq("tournament_id", tid)
+          .then(async (r) => {
+            const ids = (r.data ?? []).map((m: { id: string }) => m.id);
+            if (ids.length === 0) return { data: [] as unknown[] };
+            return db.from("match_sets").select("*").in("match_id", ids);
+          }),
+        db.from("registrations").select("*").eq("tournament_id", tid),
+        db.from("announcements").select("*").eq("tournament_id", tid),
+      ]);
+    const snapshot = {
+      snapshotted_at: new Date().toISOString(),
+      tournament: tRow.data,
+      teams: teamsRes.data ?? [],
+      team_members: membersRes.data ?? [],
+      matches: matchesRes.data ?? [],
+      match_sets: setsRes.data ?? [],
+      registrations: regsRes.data ?? [],
+      announcements: annRes.data ?? [],
+    };
+    const { error: backupErr } = await db.from("import_backups").insert({
+      created_by: sess.adminId,
+      reason: `before import of ${tournament.id}`,
+      payload: snapshot,
+    });
+    if (backupErr) {
+      return NextResponse.json(
+        {
+          error: `無法建立備份,已中止匯入:${backupErr.message}`,
+          stage: "snapshot",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Wipe current tournament (if any). CASCADE handles teams/matches/etc.
+  for (const t of existingTournaments ?? []) {
     await db.from("tournaments").delete().eq("id", t.id);
   }
 

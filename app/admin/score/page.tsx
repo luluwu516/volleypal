@@ -21,7 +21,7 @@ export default async function ScoreListPage() {
         <EmptyState
           glyph="🗂"
           title="尚未建立賽事"
-          body="請先到管理首頁完成賽事設定,再回來這裡挑比賽計分。"
+          body="請先到管理首頁完成賽事設定，再回來這裡挑比賽計分。"
           cta={{ href: "/admin", label: "回管理首頁" }}
         />
       </div>
@@ -41,7 +41,7 @@ export default async function ScoreListPage() {
         <EmptyState
           glyph="🏐"
           title="還沒有比賽"
-          body="先到賽程頁生成賽程,計分頁才會出現可挑選的場次。"
+          body="先到賽程頁生成賽程，計分頁才會出現可挑選的場次。"
           cta={{ href: "/admin/scheduler", label: "去建立賽程" }}
         />
       )}

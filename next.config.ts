@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+// Fail the build (and every server cold-start) with a clear message if a
+// required env var is missing or malformed, instead of dying later inside a
+// request handler with a cryptic message.
+import { env } from "./lib/env";
+env();
 
 // Baseline defense-in-depth headers. Skipping CSP for now — Next.js relies
 // on inline scripts + hydration bootstrap that would require nonce-based CSP

@@ -65,6 +65,9 @@ interface AnnouncementsContextValue {
   items: Announcement[];
   dismissed: Set<string>;
   unreadCount: number;
+  /** True after 2+ consecutive poll failures. UI can flag that displayed
+   *  data may be behind. */
+  stale: boolean;
   dismiss: (id: string) => void;
   markAllRead: () => void;
   isDismissed: (id: string) => boolean;
@@ -87,6 +90,7 @@ interface ProviderProps {
  */
 export function AnnouncementsProvider({ initial, children }: ProviderProps) {
   const [items, setItems] = useState<Announcement[]>(initial);
+  const [stale, setStale] = useState(false);
   // useSyncExternalStore's server snapshot for `dismissedRaw` is "" because
   // localStorage isn't reachable at SSR, so the first client render before
   // hydration treats the dismissed set as empty. Without this gate, any
@@ -108,14 +112,21 @@ export function AnnouncementsProvider({ initial, children }: ProviderProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let failCount = 0;
     const fetchOnce = async () => {
       try {
         const res = await fetch("/api/announcements", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { announcements: Announcement[] };
-        if (!cancelled) setItems(data.announcements ?? []);
+        if (cancelled) return;
+        setItems(data.announcements ?? []);
+        setStale(false);
+        failCount = 0;
       } catch {
-        // network blip — try again on next tick
+        // Keep last-good items on screen; flag stale after two failures so
+        // one blip doesn't nag the user, but a real outage becomes visible.
+        failCount++;
+        if (!cancelled && failCount >= 2) setStale(true);
       }
     };
     const id = setInterval(fetchOnce, POLL_MS);
@@ -148,6 +159,7 @@ export function AnnouncementsProvider({ initial, children }: ProviderProps) {
         items: visibleItems,
         dismissed,
         unreadCount,
+        stale,
         dismiss,
         markAllRead,
         isDismissed: (id) => dismissed.has(id),
