@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { OptionListEditor } from "@/components/admin/OptionListEditor";
 
 const STRATEGY_OPTIONS: { value: GroupingStrategy; label: string; hint: string }[] = [
   { value: "zodiac_together", label: "同星座象", hint: "火/土/風/水 各成兩隊" },
@@ -23,6 +24,8 @@ interface Props {
 
 export function TournamentSettingsForm({ tournament, disabled = false }: Props) {
   const router = useRouter();
+  const [name, setName] = useState(tournament.name);
+  const [year, setYear] = useState(tournament.year);
   const [strategy, setStrategy] = useState<GroupingStrategy>(
     tournament.grouping_strategy,
   );
@@ -56,6 +59,8 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name,
+          year,
           grouping_strategy: strategy,
           num_courts: numCourts,
           match_duration_min: matchDuration,
@@ -92,8 +97,28 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
       <CardContent>
         <fieldset
           disabled={disabled}
-          className="flex flex-col gap-3 disabled:opacity-60 group"
+          className="flex flex-col gap-3 min-w-0 disabled:opacity-60 group"
         >
+        <div>
+          <Label htmlFor="name">賽事名稱</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="year">賽事年份</Label>
+          <Input
+            id="year"
+            type="number"
+            min={2000}
+            max={2100}
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+          />
+        </div>
         <div>
           <Label htmlFor="strategy">分隊策略</Label>
           <select
@@ -250,30 +275,19 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
               />
             </div>
             <div>
-              <Label htmlFor="lunch">午餐選擇（每行一項）</Label>
-              <textarea
-                id="lunch"
-                rows={3}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              <Label>午餐選擇</Label>
+              <OptionListEditor
                 value={lunch}
-                onChange={(e) => setLunch(e.target.value)}
-                placeholder={
-                  "Chick-fil-A\nIn-N-Out | https://www.in-n-out.com\n附近便當店"
-                }
+                onChange={setLunch}
+                namePlaceholder="例如 Chick-fil-A"
               />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                格式：每行一項，可加 ` | 網址` 變成可點連結
-              </p>
             </div>
             <div>
-              <Label htmlFor="drink">飲料選擇（每行一項）</Label>
-              <textarea
-                id="drink"
-                rows={3}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              <Label>飲料選擇</Label>
+              <OptionListEditor
                 value={drink}
-                onChange={(e) => setDrink(e.target.value)}
-                placeholder={"TP Tea\nDing Tea | https://example.com"}
+                onChange={setDrink}
+                namePlaceholder="例如 TP Tea"
               />
             </div>
           </div>

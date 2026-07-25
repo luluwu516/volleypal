@@ -4,6 +4,8 @@ import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const Body = z.object({
+  name: z.string().min(1).max(120).optional(),
+  year: z.number().int().min(2000).max(2100).optional(),
   grouping_strategy: z
     .enum(["zodiac_together", "zodiac_mixed", "mbti_together", "mbti_mixed"])
     .optional(),
