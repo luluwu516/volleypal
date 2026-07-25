@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { normalizeMbti } from "@/lib/mbti";
 
 /**
  * Receives form submissions from the Google Apps Script trigger.
@@ -162,6 +163,7 @@ export async function POST(req: Request) {
   const phone = pick(r, ["phone", "電話"]);
   const gender = normalizeGender(pick(r, ["gender", "性別", "sex"]));
   const position = normalizePosition(pick(r, ["position", "位置"]));
+  const mbti = normalizeMbti(pick(r, ["mbti", "人格", "性格"]));
 
   const row: Record<string, unknown> = {
     tournament_id: body.tournament_id,
@@ -169,6 +171,7 @@ export async function POST(req: Request) {
     gender,
     birthday,
     position,
+    mbti,
     email,
     phone,
     raw_form_payload: r,

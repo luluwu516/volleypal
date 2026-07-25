@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { Tournament } from "@/lib/db/types";
+import type { GroupingStrategy, Tournament } from "@/lib/db/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+
+const STRATEGY_OPTIONS: { value: GroupingStrategy; label: string; hint: string }[] = [
+  { value: "zodiac_together", label: "同星座象", hint: "火/土/風/水 各成兩隊" },
+  { value: "zodiac_mixed", label: "打散各星座象", hint: "8 隊各自混合星座" },
+  { value: "mbti_together", label: "同 MBTI 氣質", hint: "NF/NT/SJ/SP 各成兩隊" },
+  { value: "mbti_mixed", label: "打散各 MBTI 氣質", hint: "8 隊各自混合氣質" },
+];
 
 interface Props {
   tournament: Tournament;
@@ -16,6 +23,9 @@ interface Props {
 
 export function TournamentSettingsForm({ tournament, disabled = false }: Props) {
   const router = useRouter();
+  const [strategy, setStrategy] = useState<GroupingStrategy>(
+    tournament.grouping_strategy,
+  );
   const [numCourts, setNumCourts] = useState(tournament.num_courts);
   const [matchDuration, setMatchDuration] = useState(
     tournament.match_duration_min,
@@ -46,6 +56,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          grouping_strategy: strategy,
           num_courts: numCourts,
           match_duration_min: matchDuration,
           group_stage_time_limit_min: groupTimeLimit || null,
@@ -83,6 +94,24 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           disabled={disabled}
           className="flex flex-col gap-3 disabled:opacity-60 group"
         >
+        <div>
+          <Label htmlFor="strategy">分隊策略</Label>
+          <select
+            id="strategy"
+            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            value={strategy}
+            onChange={(e) => setStrategy(e.target.value as GroupingStrategy)}
+          >
+            {STRATEGY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label} · {o.hint}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            決定「產生隊伍」按鈕背後的分組演算法。改動後下次生成才會套用。
+          </p>
+        </div>
         <div>
           <Label htmlFor="courts">場地數</Label>
           <Input

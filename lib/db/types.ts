@@ -5,7 +5,18 @@
  */
 
 export type TournamentMode = "classic" | "zodiac";
+export type GroupingStrategy =
+  | "zodiac_together"
+  | "zodiac_mixed"
+  | "mbti_together"
+  | "mbti_mixed";
 export type ElementType = "fire" | "earth" | "air" | "water";
+export type MbtiTemperament = "NF" | "NT" | "SJ" | "SP";
+export type MbtiTypeCode =
+  | "INTJ" | "INTP" | "ENTJ" | "ENTP"
+  | "INFJ" | "INFP" | "ENFJ" | "ENFP"
+  | "ISTJ" | "ISFJ" | "ESTJ" | "ESFJ"
+  | "ISTP" | "ISFP" | "ESTP" | "ESFP";
 export type GenderType = "male" | "female" | "other";
 export type PositionType =
   | "setter"
@@ -34,6 +45,7 @@ export interface Tournament {
   registration_opens_at: string | null;
   registration_closes_at: string | null;
   match_day_date: string | null;
+  grouping_strategy: GroupingStrategy;
   num_courts: number;
   match_duration_min: number;
   group_stage_time_limit_min: number | null;
@@ -58,6 +70,7 @@ export interface Registration {
   birthday: string | null;
   position: PositionType;
   skill_level: number | null;
+  mbti: MbtiTypeCode | null;
   phone: string | null;
   email: string | null;
   raw_form_payload: unknown;
@@ -70,6 +83,7 @@ export interface Team {
   name: string;
   color: string | null;
   element: ElementType | null;
+  temperament: MbtiTemperament | null;
   captain_registration_id: string | null;
   seed: number | null;
   created_at: string;

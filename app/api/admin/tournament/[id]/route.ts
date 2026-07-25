@@ -4,6 +4,9 @@ import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const Body = z.object({
+  grouping_strategy: z
+    .enum(["zodiac_together", "zodiac_mixed", "mbti_together", "mbti_mixed"])
+    .optional(),
   num_courts: z.number().int().min(1).max(8).optional(),
   match_duration_min: z.number().int().min(10).max(180).optional(),
   group_stage_time_limit_min: z.number().int().nullable().optional(),

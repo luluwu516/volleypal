@@ -33,8 +33,15 @@ export default async function TeamsPage() {
       teams.map((t) => t.id),
     );
 
-  const canGenerate =
-    tournament.mode === "zodiac" && registrations.length >= 8;
+  const canGenerate = registrations.length >= 8;
+  const STRATEGY_LABEL: Record<string, string> = {
+    zodiac_together: "同星座象",
+    zodiac_mixed: "打散星座象",
+    mbti_together: "同 MBTI 氣質",
+    mbti_mixed: "打散 MBTI 氣質",
+  };
+  const strategyLabel =
+    STRATEGY_LABEL[tournament.grouping_strategy] ?? tournament.grouping_strategy;
 
   return (
     <div className="flex flex-col gap-4 pt-2">
@@ -43,7 +50,7 @@ export default async function TeamsPage() {
       <header>
         <h1 className="text-xl font-bold">分隊</h1>
         <p className="text-xs text-muted-foreground">
-          報名人數: {registrations.length} · 已建立隊伍: {teams.length}
+          報名 {registrations.length} · 隊伍 {teams.length} · 策略 {strategyLabel}
         </p>
       </header>
 
@@ -68,27 +75,25 @@ export default async function TeamsPage() {
         </section>
       )}
 
-      {tournament.mode === "zodiac" && (
-        <section className="flex flex-col gap-2 sticky bottom-20 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 border-t border-border/30">
-          <GenerateTeamsButton
+      <section className="flex flex-col gap-2 sticky bottom-20 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 border-t border-border/30">
+        <GenerateTeamsButton
+          tournamentId={tournament.id}
+          existingCount={teams.length}
+          disabled={locked}
+        />
+        {!canGenerate && (
+          <p className="text-xs text-amber-400 text-center">
+            ⚠ 需 ≥ 8 位報名者才能分隊（目前 {registrations.length}）
+          </p>
+        )}
+        {teams.length > 0 && (
+          <CancelTeamsButton
             tournamentId={tournament.id}
-            existingCount={teams.length}
+            teamCount={teams.length}
             disabled={locked}
           />
-          {!canGenerate && registrations.length < 8 && (
-            <p className="text-xs text-amber-400 text-center">
-              ⚠ 需 ≥ 8 位報名者才能分隊（目前 {registrations.length}）
-            </p>
-          )}
-          {teams.length > 0 && (
-            <CancelTeamsButton
-              tournamentId={tournament.id}
-              teamCount={teams.length}
-              disabled={locked}
-            />
-          )}
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }

@@ -1,4 +1,12 @@
 import { Element, elementFromBirthday, ELEMENT_LABELS_ZH } from "./zodiac";
+import {
+  type MbtiType,
+  type Temperament,
+  MBTI_TO_TEMPERAMENT,
+  TEMPERAMENT_LABELS_ZH,
+  TEMPERAMENTS,
+} from "./mbti";
+import type { GroupingStrategy } from "./db/types";
 
 export type Position =
   | "setter"
@@ -17,39 +25,52 @@ export interface Player {
   gender?: Gender;
   position: Position;
   skill: number;
+  mbti?: MbtiType;
 }
 
-export interface ElementTeam {
-  element: Element;
+const ELEMENTS: Element[] = ["fire", "earth", "air", "water"];
+
+// -------- Generic attribute-based bucketing --------
+
+export interface Bucket<A extends string> {
+  attribute: A;
   label: string;
   members: Player[];
 }
 
-export interface SubTeam {
-  element: Element;
+export interface SubBucket<A extends string> {
+  attribute: A;
   label: string;
   subLabel: "A" | "B";
   members: Player[];
 }
 
-const ELEMENTS: Element[] = ["fire", "earth", "air", "water"];
-
-export function assignByElement(players: Player[]): ElementTeam[] {
-  const buckets: Record<Element, Player[]> = {
-    fire: [],
-    earth: [],
-    air: [],
-    water: [],
-  };
+/**
+ * Bucket players by an attribute extractor. Attributes list controls output
+ * order; empty attributes produce empty buckets so downstream splitting still
+ * emits 4 groups worth (needed for the together strategies).
+ */
+export function bucketPlayersBy<A extends string>(
+  players: Player[],
+  attributes: readonly A[],
+  getAttribute: (p: Player) => A,
+  labelFor: (a: A) => string,
+): Bucket<A>[] {
+  const map = new Map<A, Player[]>();
+  for (const a of attributes) map.set(a, []);
   for (const p of players) {
-    buckets[elementFromBirthday(p.birthday)].push(p);
+    const key = getAttribute(p);
+    const list = map.get(key);
+    if (list) list.push(p);
   }
-  return ELEMENTS.map((element) => ({
-    element,
-    label: ELEMENT_LABELS_ZH[element],
-    members: buckets[element],
+  return attributes.map((a) => ({
+    attribute: a,
+    label: labelFor(a),
+    members: map.get(a) ?? [],
   }));
 }
+
+// -------- Balance / imbalance --------
 
 interface BalanceOptions {
   /** A team is overloaded if its size > avg * (1 + tolerance). Default 0.15. */
@@ -59,22 +80,20 @@ interface BalanceOptions {
 }
 
 /**
- * Rebalance element teams when sizes are uneven. Moves the player from the
- * largest team into the smallest team whose move best preserves
- * gender / position / skill balance across both teams.
- *
- * The "element" identity of moved players is overridden by the new team.
- * Returns a NEW array; does not mutate input.
+ * Rebalance buckets when sizes are uneven. Moves the player from the
+ * largest bucket into the smallest one whose move best preserves
+ * gender / position / skill balance. Attribute identity of moved players is
+ * effectively overridden by the destination bucket. Pure — returns new array.
  */
-export function balanceElementSizes(
-  teams: ElementTeam[],
+export function balanceBucketSizes<A extends string>(
+  buckets: Bucket<A>[],
   options: BalanceOptions = {},
-): ElementTeam[] {
+): Bucket<A>[] {
   const tolerance = options.tolerance ?? 0.15;
   const maxIter = options.maxIterations ?? 200;
 
-  const working = teams.map((t) => ({ ...t, members: [...t.members] }));
-  const total = working.reduce((sum, t) => sum + t.members.length, 0);
+  const working = buckets.map((b) => ({ ...b, members: [...b.members] }));
+  const total = working.reduce((sum, b) => sum + b.members.length, 0);
   if (total === 0) return working;
   const avg = total / working.length;
   const overloadAt = Math.ceil(avg * (1 + tolerance));
@@ -117,7 +136,7 @@ export function balanceElementSizes(
  * position distribution, and skill mean from team-internal expectations.
  * Lower is better. Used as a heuristic, not an exact metric.
  */
-function imbalance(members: Player[]): number {
+export function imbalance(members: Player[]): number {
   if (members.length === 0) return 0;
   const genderCounts: Record<Gender | "unknown", number> = {
     male: 0,
@@ -154,15 +173,16 @@ function imbalance(members: Player[]): number {
 }
 
 /**
- * Zigzag (snake) draft to split an element's members into balanced A/B teams.
+ * Zigzag (snake) draft to split a bucket's members into balanced A/B teams.
  * Sort by skill desc; alternate A,B,B,A,A,B,B,A...
  */
-export function splitIntoSubteams(team: ElementTeam): [SubTeam, SubTeam] {
-  const sorted = [...team.members].sort((a, b) => b.skill - a.skill);
+export function splitBucketInHalf<A extends string>(
+  bucket: Bucket<A>,
+): [SubBucket<A>, SubBucket<A>] {
+  const sorted = [...bucket.members].sort((a, b) => b.skill - a.skill);
   const a: Player[] = [];
   const b: Player[] = [];
   sorted.forEach((p, i) => {
-    // Snake: pairs (0,1) (3,2) (4,5) (7,6) ...
     const pair = Math.floor(i / 2);
     const inPair = i % 2;
     const goesA = pair % 2 === 0 ? inPair === 0 : inPair === 1;
@@ -170,19 +190,182 @@ export function splitIntoSubteams(team: ElementTeam): [SubTeam, SubTeam] {
     else b.push(p);
   });
   return [
-    { element: team.element, label: team.label, subLabel: "A", members: a },
-    { element: team.element, label: team.label, subLabel: "B", members: b },
+    { attribute: bucket.attribute, label: bucket.label, subLabel: "A", members: a },
+    { attribute: bucket.attribute, label: bucket.label, subLabel: "B", members: b },
   ];
 }
 
 /**
- * Full pipeline: players -> 4 balanced element teams -> 8 sub-teams (A/B per element).
+ * "Together" pipeline: bucket by attribute → balance sizes → snake-split each
+ * bucket into A/B. Produces exactly 2 × attributes.length sub-teams.
  */
-export function buildEightTeams(
+export function buildTogetherTeams<A extends string>(
+  players: Player[],
+  attributes: readonly A[],
+  getAttribute: (p: Player) => A,
+  labelFor: (a: A) => string,
+  options?: BalanceOptions,
+): SubBucket<A>[] {
+  const initial = bucketPlayersBy(players, attributes, getAttribute, labelFor);
+  const balanced = balanceBucketSizes(initial, options);
+  return balanced.flatMap((b) => splitBucketInHalf(b));
+}
+
+// -------- Mixed strategy --------
+
+export interface MixedTeam {
+  name: string;
+  members: Player[];
+}
+
+/**
+ * "Mixed" pipeline: spread each attribute evenly across `teamCount` generic
+ * teams. Within each attribute bucket, snake-draft (skill-descending) across
+ * the teams so no team is starved. Then run a local-search swap pass to
+ * shrink gender / position / skill imbalance without breaking attribute
+ * spread — swaps only allowed between same-attribute pairs.
+ */
+export function buildMixedTeams<A extends string>(
+  players: Player[],
+  attributes: readonly A[],
+  getAttribute: (p: Player) => A,
+  teamCount = 8,
+  options?: { maxSwapIterations?: number },
+): MixedTeam[] {
+  const teams: Player[][] = Array.from({ length: teamCount }, () => []);
+  const buckets = bucketPlayersBy(players, attributes, getAttribute, () => "");
+
+  // Greedy spread: for each player (skill-desc within attribute), pick the
+  // team with the fewest of this attribute already; break ties by smallest
+  // total team size. Guarantees no team is empty when players ≥ teamCount
+  // and gives evenly-spread attributes even when count-per-attribute doesn't
+  // divide teamCount evenly (e.g. 6 players / 8 teams).
+  for (const bucket of buckets) {
+    const sorted = [...bucket.members].sort((a, b) => b.skill - a.skill);
+    for (const p of sorted) {
+      let targetIdx = 0;
+      let bestScore = Infinity;
+      for (let i = 0; i < teamCount; i++) {
+        const attrCount = teams[i].filter(
+          (x) => getAttribute(x) === bucket.attribute,
+        ).length;
+        const score = attrCount * teamCount + teams[i].length;
+        if (score < bestScore) {
+          bestScore = score;
+          targetIdx = i;
+        }
+      }
+      teams[targetIdx].push(p);
+    }
+  }
+
+  // Swap-optimization: for each pair of same-attribute players in different
+  // teams, swap if it reduces total imbalance. Repeat until no gains or cap.
+  const maxIter = options?.maxSwapIterations ?? 40;
+  for (let iter = 0; iter < maxIter; iter++) {
+    let improved = false;
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        for (let a = 0; a < teams[i].length; a++) {
+          const pa = teams[i][a];
+          const attrA = getAttribute(pa);
+          for (let b = 0; b < teams[j].length; b++) {
+            const pb = teams[j][b];
+            if (getAttribute(pb) !== attrA) continue;
+            const before = imbalance(teams[i]) + imbalance(teams[j]);
+            const swappedI = [...teams[i]];
+            swappedI[a] = pb;
+            const swappedJ = [...teams[j]];
+            swappedJ[b] = pa;
+            const after = imbalance(swappedI) + imbalance(swappedJ);
+            if (after + 1e-6 < before) {
+              teams[i] = swappedI;
+              teams[j] = swappedJ;
+              improved = true;
+            }
+          }
+        }
+      }
+    }
+    if (!improved) break;
+  }
+
+  return teams.map((members, i) => ({
+    name: `隊伍 ${i + 1}`,
+    members,
+  }));
+}
+
+// -------- Strategy orchestration --------
+
+export type BuildResult =
+  | { kind: "together_zodiac"; teams: SubBucket<Element>[] }
+  | { kind: "together_mbti"; teams: SubBucket<Temperament>[] }
+  | { kind: "mixed"; teams: MixedTeam[] };
+
+export interface StrategyValidation {
+  ok: boolean;
+  missingBirthday?: Player[];
+  missingMbti?: Player[];
+}
+
+export function validatePlayersFor(
+  strategy: GroupingStrategy,
+  players: Player[],
+): StrategyValidation {
+  if (strategy === "zodiac_together" || strategy === "zodiac_mixed") {
+    const missingBirthday = players.filter((p) => !p.birthday || Number.isNaN(p.birthday.getTime()));
+    if (missingBirthday.length > 0) {
+      return { ok: false, missingBirthday };
+    }
+    return { ok: true };
+  }
+  const missingMbti = players.filter((p) => !p.mbti);
+  if (missingMbti.length > 0) return { ok: false, missingMbti };
+  return { ok: true };
+}
+
+export function buildTeamsForStrategy(
+  strategy: GroupingStrategy,
   players: Player[],
   options?: BalanceOptions,
-): SubTeam[] {
-  const initial = assignByElement(players);
-  const balanced = balanceElementSizes(initial, options);
-  return balanced.flatMap((t) => splitIntoSubteams(t));
+): BuildResult {
+  switch (strategy) {
+    case "zodiac_together": {
+      const teams = buildTogetherTeams<Element>(
+        players,
+        ELEMENTS,
+        (p) => elementFromBirthday(p.birthday),
+        (a) => ELEMENT_LABELS_ZH[a],
+        options,
+      );
+      return { kind: "together_zodiac", teams };
+    }
+    case "zodiac_mixed": {
+      const teams = buildMixedTeams<Element>(
+        players,
+        ELEMENTS,
+        (p) => elementFromBirthday(p.birthday),
+      );
+      return { kind: "mixed", teams };
+    }
+    case "mbti_together": {
+      const teams = buildTogetherTeams<Temperament>(
+        players,
+        TEMPERAMENTS,
+        (p) => MBTI_TO_TEMPERAMENT[p.mbti!],
+        (a) => TEMPERAMENT_LABELS_ZH[a],
+        options,
+      );
+      return { kind: "together_mbti", teams };
+    }
+    case "mbti_mixed": {
+      const teams = buildMixedTeams<Temperament>(
+        players,
+        TEMPERAMENTS,
+        (p) => MBTI_TO_TEMPERAMENT[p.mbti!],
+      );
+      return { kind: "mixed", teams };
+    }
+  }
 }

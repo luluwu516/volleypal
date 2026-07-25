@@ -20,6 +20,13 @@ const ELEMENT_DOT: Record<string, string> = {
   water: "bg-cyan-500/80",
 };
 
+const TEMPERAMENT_STYLE: Record<string, { label: string; className: string }> = {
+  NF: { label: "NF", className: "bg-purple-500/20 text-purple-200" },
+  NT: { label: "NT", className: "bg-sky-500/20 text-sky-200" },
+  SJ: { label: "SJ", className: "bg-green-500/20 text-green-200" },
+  SP: { label: "SP", className: "bg-amber-500/20 text-amber-200" },
+};
+
 interface Member {
   registration_id: string;
   team_id: string;
@@ -130,6 +137,13 @@ export function TeamsBoard({
                     <span
                       className={`size-2.5 rounded-full shrink-0 ${ELEMENT_DOT[t.element] ?? "bg-muted"}`}
                     />
+                  )}
+                  {t.temperament && TEMPERAMENT_STYLE[t.temperament] && (
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${TEMPERAMENT_STYLE[t.temperament].className}`}
+                    >
+                      {TEMPERAMENT_STYLE[t.temperament].label}
+                    </span>
                   )}
                   <span className="truncate">{t.name}</span>
                 </div>
@@ -252,6 +266,11 @@ function MovePopover({
                       <span
                         className={`size-2 rounded-full ${ELEMENT_DOT[t.element] ?? "bg-muted"}`}
                       />
+                    )}
+                    {t.temperament && (
+                      <span className="text-[9px] font-semibold tracking-wider text-muted-foreground">
+                        {t.temperament}
+                      </span>
                     )}
                     {t.name}
                   </span>
