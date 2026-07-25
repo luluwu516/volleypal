@@ -96,7 +96,7 @@ export function RefereePicker({
         <button
           type="button"
           disabled={disabled || pending}
-          className={`inline-flex items-center gap-1 rounded border border-border/40 px-1.5 py-0.5 text-[11px] hover:bg-white/5 disabled:opacity-40 ${
+          className={`inline-flex items-center gap-1 rounded border border-border/40 px-2 py-1.5 text-xs min-h-9 hover:bg-white/5 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
             isUnassigned ? "text-muted-foreground" : "text-foreground"
           }`}
           aria-label="選擇裁判"

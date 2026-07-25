@@ -161,41 +161,38 @@ export function TeamsBoard({
         return (
           <Card key={t.id}>
             <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {t.element && (
-                    <span
-                      className={`size-2.5 rounded-full shrink-0 ${ELEMENT_DOT[t.element] ?? "bg-muted"}`}
-                    />
-                  )}
-                  {t.temperament && TEMPERAMENT_STYLE[t.temperament] && (
-                    <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${TEMPERAMENT_STYLE[t.temperament].className}`}
-                    >
-                      {TEMPERAMENT_STYLE[t.temperament].label}
-                    </span>
-                  )}
-                  <span className="truncate">{t.name}</span>
-                  {!disabled && (
-                    <RenamePopover
-                      team={t}
-                      onRenamed={() => router.refresh()}
-                    />
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground font-normal shrink-0 tabular-nums">
-                  <span>{teamMembers.length} 人</span>
-                  {metrics.avgSkill != null && (
-                    <span title="平均實力">Lv {metrics.avgSkill.toFixed(1)}</span>
-                  )}
-                  <span title="女 / 男">
-                    ♀{metrics.female}·♂{metrics.male}
+              <CardTitle className="text-base flex items-center gap-2 min-w-0">
+                {t.element && (
+                  <span
+                    className={`size-2.5 rounded-full shrink-0 ${ELEMENT_DOT[t.element] ?? "bg-muted"}`}
+                  />
+                )}
+                {t.temperament && TEMPERAMENT_STYLE[t.temperament] && (
+                  <span
+                    className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${TEMPERAMENT_STYLE[t.temperament].className}`}
+                  >
+                    {TEMPERAMENT_STYLE[t.temperament].label}
                   </span>
-                  {metrics.setters > 0 && (
-                    <span title="舉球員">🙌🏻{metrics.setters}</span>
-                  )}
-                </div>
+                )}
+                <span className="truncate">{t.name}</span>
+                {!disabled && (
+                  <RenamePopover
+                    team={t}
+                    onRenamed={() => router.refresh()}
+                  />
+                )}
               </CardTitle>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+                <span>{teamMembers.length} 人</span>
+                {metrics.avgSkill != null && (
+                  <span title="平均實力">Lv {metrics.avgSkill.toFixed(1)}</span>
+                )}
+                <span title="女">♀ {metrics.female}</span>
+                <span title="男">♂ {metrics.male}</span>
+                {metrics.setters > 0 && (
+                  <span title="舉球員">🙌🏻 {metrics.setters}</span>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="pt-0">
               {teamMembers.length === 0 ? (
@@ -316,10 +313,10 @@ function RenamePopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="shrink-0 size-6 grid place-items-center rounded text-muted-foreground hover:bg-white/10 hover:text-foreground"
+          className="shrink-0 size-9 -m-1 grid place-items-center rounded text-muted-foreground hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="改名"
         >
-          <Pencil className="size-3" />
+          <Pencil className="size-3.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="start">
@@ -375,10 +372,10 @@ function MovePopover({
         <button
           type="button"
           disabled={disabled}
-          className="size-6 grid place-items-center rounded hover:bg-white/10 disabled:opacity-40"
+          className="size-9 -m-1 grid place-items-center rounded hover:bg-white/10 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="移動到其他隊伍"
         >
-          <ArrowRightLeft className="size-3.5" />
+          <ArrowRightLeft className="size-4" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-1" align="end">

@@ -8,6 +8,11 @@ import {
   elementFromBirthday,
   ELEMENT_LABELS_ZH,
 } from "@/lib/zodiac";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
@@ -120,26 +125,84 @@ export function RosterList({
                   {sign ? SIGN_ZH[sign] : "?"}
                 </span>
               </span>
-              <select
-                value={r.skill_level ?? ""}
-                onChange={(e) => updateSkill(r.id, e.target.value)}
+              <SkillPicker
+                value={r.skill_level}
+                onChange={(v) => updateSkill(r.id, v)}
                 disabled={pending || disabled}
-                className="rounded border border-input bg-transparent px-1 py-0.5 text-sm text-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">—</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
+              />
             </li>
           );
         })}
       </ul>
       <p className="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/30">
-        🙌🏻 = 舉球員 · 實力下拉改完會自動儲存
+        🙌🏻 = 舉球員 · 實力點選後自動儲存
       </p>
     </div>
+  );
+}
+
+// Custom skill picker: native <select> on mobile puts its dropdown at odd
+// positions (Chrome vertically aligns the highlighted option with the trigger
+// text, which drifts if the trigger has vertical padding). A Popover anchors
+// predictably below the trigger and lets us hit the 44pt touch target on the
+// options themselves.
+const SKILL_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "—" },
+  { value: "1", label: "1" },
+  { value: "2", label: "2" },
+  { value: "3", label: "3" },
+  { value: "4", label: "4" },
+  { value: "5", label: "5" },
+];
+
+function SkillPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number | null;
+  onChange: (raw: string) => void;
+  disabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const display = value == null ? "—" : String(value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="rounded border border-input bg-transparent px-2 min-h-9 text-sm text-center tabular-nums w-full hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          aria-label={`實力 ${display}`}
+        >
+          {display}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-24 p-1" align="end">
+        <ul className="flex flex-col">
+          {SKILL_OPTIONS.map((opt) => {
+            const isCurrent =
+              (value == null && opt.value === "") ||
+              String(value) === opt.value;
+            return (
+              <li key={opt.value || "clear"}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-center rounded px-2 min-h-9 text-sm tabular-nums hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+                    isCurrent ? "bg-white/10 font-semibold" : ""
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }

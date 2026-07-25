@@ -59,7 +59,7 @@ export function AnnouncementCenter() {
                   <button
                     type="button"
                     onClick={() => dismiss(a.id)}
-                    className="shrink-0 -mr-1 size-5 grid place-items-center rounded hover:bg-white/10"
+                    className="shrink-0 -mr-1 size-9 -my-1 grid place-items-center rounded hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                     aria-label="關閉廣播"
                   >
                     <X className="size-4" />
