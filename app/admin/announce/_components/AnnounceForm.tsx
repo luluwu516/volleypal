@@ -113,7 +113,7 @@ export function AnnounceForm({
         />
         <div>
           <Label className="text-xs text-muted-foreground">等級</Label>
-          <div className="grid grid-cols-3 gap-2 mt-1.5">
+          <div className="grid grid-cols-3 gap-2">
             {LEVEL_OPTIONS.map((opt) => {
               const selected = level === opt.value;
               return (
@@ -139,7 +139,7 @@ export function AnnounceForm({
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">保留時間</Label>
-          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+          <div className="flex flex-wrap items-center gap-2">
             {EXPIRY_OPTIONS.map((opt) => (
               <Button
                 key={opt.label}
