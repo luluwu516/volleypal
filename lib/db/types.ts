@@ -46,6 +46,7 @@ export interface Tournament {
   registration_closes_at: string | null;
   match_day_date: string | null;
   grouping_strategy: GroupingStrategy;
+  teams_public_at: string | null;
   num_courts: number;
   match_duration_min: number;
   group_stage_time_limit_min: number | null;

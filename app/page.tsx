@@ -1,4 +1,6 @@
-import { getCurrentTournament } from "@/lib/db/repository";
+import Link from "next/link";
+import { formatInTimeZone } from "date-fns-tz";
+import { getCurrentTournament, listTeams } from "@/lib/db/repository";
 import { Hero } from "@/components/Hero";
 import {
   Accordion,
@@ -17,9 +19,13 @@ import {
   CupSoda,
   Utensils,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { NavigateButton } from "@/components/NavigateButton";
 import { VenueOptionList } from "@/components/VenueOptionList";
+import { RosterCountdown } from "@/components/RosterCountdown";
+
+const TZ = process.env.NEXT_PUBLIC_APP_TZ || "America/Los_Angeles";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -33,6 +39,27 @@ export const revalidate = 30;
 
 export default async function HomePage() {
   const tournament = await safe(getCurrentTournament, null);
+  const teamCount = tournament
+    ? await safe(async () => (await listTeams(tournament.id)).length, 0)
+    : 0;
+
+  // Roster gate: derive one of four states for the accordion body so the
+  // page still fully SSRs. Countdown ticker (client component) only mounts
+  // when we're inside the last 24h window.
+  const now = new Date();
+  const publishAt = tournament?.teams_public_at
+    ? new Date(tournament.teams_public_at)
+    : null;
+  const msUntilPublish = publishAt ? publishAt.getTime() - now.getTime() : null;
+  const rosterState: "no-teams" | "no-time" | "waiting" | "live" = !tournament
+    ? "no-teams"
+    : teamCount === 0
+      ? "no-teams"
+      : !publishAt
+        ? "no-time"
+        : msUntilPublish !== null && msUntilPublish <= 0
+          ? "live"
+          : "waiting";
 
   return (
     <div className="flex flex-col gap-4">
@@ -103,6 +130,51 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
                     </a>
                   ) : (
                     "尚未開放報名"
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="roster">
+                <AccordionTrigger className="px-4">
+                  <span className="flex items-center gap-2">
+                    <Users className="size-4 text-amber-400" />
+                    隊伍名單
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 text-sm text-muted-foreground flex flex-col gap-2">
+                  {rosterState === "no-teams" && (
+                    <p>尚未分隊,請等待主辦公布時間。</p>
+                  )}
+                  {rosterState === "no-time" && (
+                    <p>已分隊完成,公開時間尚未安排。</p>
+                  )}
+                  {rosterState === "waiting" && publishAt && (
+                    <>
+                      <p>
+                        預計公開:
+                        <span className="ml-1 text-foreground font-medium">
+                          {formatInTimeZone(publishAt, TZ, "MM/dd HH:mm")}
+                          {" (PT)"}
+                        </span>
+                      </p>
+                      {msUntilPublish !== null &&
+                        msUntilPublish <= 24 * 60 * 60 * 1000 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs">剩餘</span>
+                            <RosterCountdown
+                              publishIso={tournament.teams_public_at!}
+                            />
+                          </div>
+                        )}
+                    </>
+                  )}
+                  {rosterState === "live" && (
+                    <Link
+                      href="/teams"
+                      className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 underline"
+                    >
+                      查看隊伍名單
+                      <ExternalLink className="size-3.5" />
+                    </Link>
                   )}
                 </AccordionContent>
               </AccordionItem>

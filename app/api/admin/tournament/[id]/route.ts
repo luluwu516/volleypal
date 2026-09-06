@@ -9,6 +9,13 @@ const Body = z.object({
   grouping_strategy: z
     .enum(["zodiac_together", "zodiac_mixed", "mbti_together", "mbti_mixed"])
     .optional(),
+  // ISO 8601 UTC string (from datetime-local converted to UTC on client) or
+  // null to unset. Empty string coerces to null so the picker's "clear"
+  // button can just send "".
+  teams_public_at: z
+    .union([z.string().datetime({ offset: true }).nullable(), z.literal("")])
+    .transform((v) => (v === "" ? null : v))
+    .optional(),
   num_courts: z.number().int().min(1).max(8).optional(),
   match_duration_min: z.number().int().min(10).max(180).optional(),
   group_stage_time_limit_min: z.number().int().nullable().optional(),

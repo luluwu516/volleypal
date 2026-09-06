@@ -5,6 +5,7 @@ import {
 } from "@/lib/db/repository";
 import { GenerateTeamsButton } from "./_components/GenerateTeamsButton";
 import { CancelTeamsButton } from "./_components/CancelTeamsButton";
+import { PublishTimePicker } from "./_components/PublishTimePicker";
 import { RosterList } from "./_components/RosterList";
 import { TeamsBoard } from "./_components/TeamsBoard";
 import { BackLink } from "@/components/nav/BackLink";
@@ -70,6 +71,13 @@ export default async function TeamsPage() {
         </p>
       </header>
 
+      <PublishTimePicker
+        tournamentId={tournament.id}
+        initialIso={tournament.teams_public_at}
+        matchDayDate={tournament.match_day_date}
+        disabled={locked}
+      />
+
       <section>
         <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
           球員列表
@@ -105,6 +113,7 @@ export default async function TeamsPage() {
           tournamentId={tournament.id}
           existingCount={teams.length}
           strategy={tournament.grouping_strategy}
+          teamsPublicAt={tournament.teams_public_at}
           disabled={locked}
         />
         {!canGenerate && (

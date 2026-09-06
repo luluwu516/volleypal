@@ -7,29 +7,14 @@ import {
   validatePlayersFor,
   type Player,
 } from "@/lib/teamBalancer";
-import { ELEMENT_LABELS_ZH } from "@/lib/zodiac";
-import { TEMPERAMENT_LABELS_ZH } from "@/lib/mbti";
 import type { MbtiTypeCode } from "@/lib/db/types";
 
 const Body = z.object({ tournamentId: z.string().uuid() });
 
-const ELEMENT_COLORS = {
-  fire: "#ef4444",
-  earth: "#a16207",
-  air: "#a78bfa",
-  water: "#06b6d4",
-} as const;
-
-const TEMPERAMENT_COLORS = {
-  NF: "#a855f7", // purple
-  NT: "#38bdf8", // sky
-  SJ: "#22c55e", // green
-  SP: "#f59e0b", // amber
-} as const;
-
-// Palette for mixed-strategy teams — 8 distinct hues so team cards remain
-// visually distinguishable when there's no attribute anchor.
-const MIXED_COLORS = [
+// Palette for team cards — 8 distinct hues so cards stay visually
+// distinguishable while names are still the generic 「隊伍 N」 (admin renames
+// them from the roster board after the fact).
+const TEAM_COLORS = [
   "#ef4444", // red
   "#f97316", // orange
   "#eab308", // yellow
@@ -127,40 +112,26 @@ export async function POST(req: Request) {
 
   const result = buildTeamsForStrategy(strategy, players);
 
-  // Flatten to a common shape (name, element?, temperament?, color, members[])
+  // All strategies emit generic 「隊伍 1..N」 names + a rotating MIXED palette,
+  // regardless of internal grouping (火象/水象 or NF/NT/…). Rationale: teams
+  // are provisioned before match day and the schedule leaks team NAMES to
+  // participants; a name like 「火象 A」 would tip off which players are on
+  // it. Admins rename teams from the roster board after players pick their
+  // own name on match day.
   interface TeamRow {
     name: string;
-    element: keyof typeof ELEMENT_COLORS | null;
-    temperament: keyof typeof TEMPERAMENT_COLORS | null;
+    element: null;
+    temperament: null;
     color: string;
     members: Player[];
   }
-  let teamRows: TeamRow[];
-  if (result.kind === "together_zodiac") {
-    teamRows = result.teams.map((t) => ({
-      name: `${ELEMENT_LABELS_ZH[t.attribute]} ${t.subLabel}`,
-      element: t.attribute,
-      temperament: null,
-      color: ELEMENT_COLORS[t.attribute],
-      members: t.members,
-    }));
-  } else if (result.kind === "together_mbti") {
-    teamRows = result.teams.map((t) => ({
-      name: `${TEMPERAMENT_LABELS_ZH[t.attribute]} ${t.subLabel}`,
-      element: null,
-      temperament: t.attribute,
-      color: TEMPERAMENT_COLORS[t.attribute],
-      members: t.members,
-    }));
-  } else {
-    teamRows = result.teams.map((t, i) => ({
-      name: t.name,
-      element: null,
-      temperament: null,
-      color: MIXED_COLORS[i % MIXED_COLORS.length],
-      members: t.members,
-    }));
-  }
+  const teamRows: TeamRow[] = result.teams.map((t, i) => ({
+    name: `隊伍 ${i + 1}`,
+    element: null,
+    temperament: null,
+    color: TEAM_COLORS[i % TEAM_COLORS.length],
+    members: t.members,
+  }));
 
   // Wipe existing teams + matches for this tournament. Cascades drop members + sets.
   await db.from("matches").delete().eq("tournament_id", tournamentId);

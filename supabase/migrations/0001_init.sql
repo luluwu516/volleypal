@@ -73,6 +73,10 @@ create table tournaments (
   year int not null,
   mode tournament_mode not null,
   grouping_strategy grouping_strategy not null default 'zodiac_together',
+  -- Time-gated team roster visibility. Null = not scheduled yet; past ts =
+  -- roster public; future ts = roster hidden until fired. Enforced by RLS
+  -- on teams / team_members below, plus a server-side check on /teams.
+  teams_public_at timestamptz,
   registration_opens_at timestamptz,
   registration_closes_at timestamptz,
   match_day_date date,
