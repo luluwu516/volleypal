@@ -74,7 +74,18 @@ export async function POST(
         p_side: body.side,
         p_delta: body.delta,
       });
-      if (error) throw error;
+      if (error) {
+        // The RPC raises 'match_finished' when a bump is attempted on a
+        // finished match. Surface a 409 so the client can show a targeted
+        // "please reopen the match" message instead of a generic failure.
+        if (error.message?.includes("match_finished")) {
+          return NextResponse.json(
+            { error: "比賽已結束,如需修改請先重開" },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
     } else {
       // Absolute set — last-write-wins is acceptable for a corrective admin op.
       const { error } = await db.from("match_sets").upsert({

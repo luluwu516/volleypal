@@ -19,9 +19,19 @@ as $$
 declare
   updated_set match_sets;
   serving_team uuid;
+  match_status_val match_status;
 begin
   if p_side not in ('a', 'b') then
     raise exception 'invalid side %', p_side;
+  end if;
+
+  -- Reject rally scoring on already-finished matches. Admin can still make
+  -- corrections via the absolute "set" upsert path (that goes through
+  -- match_sets directly, not this RPC), or reopen the match by setting its
+  -- status back to 'live' first.
+  select status into match_status_val from matches where id = p_match_id;
+  if match_status_val = 'finished' then
+    raise exception 'match_finished' using errcode = 'check_violation';
   end if;
 
   insert into match_sets (match_id, set_no, score_a, score_b)
