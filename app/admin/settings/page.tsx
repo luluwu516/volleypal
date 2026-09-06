@@ -5,6 +5,7 @@ import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { ExportButton } from "./_components/ExportButton";
+import { CsvExportButtons } from "./_components/CsvExportButtons";
 import { ImportButton } from "./_components/ImportButton";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +26,21 @@ export default async function SettingsPage() {
             <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
               資料備份
             </h2>
-            <div className="flex flex-col gap-2">
-              <ExportButton />
-              {!locked && <ImportButton />}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <ExportButton />
+                {!locked && <ImportButton />}
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground mb-1.5 uppercase tracking-wider">
+                  CSV 分項匯出（紙本備案）
+                </p>
+                <CsvExportButtons />
+              </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              匯出整份賽事資料為 JSON。匯入會覆蓋目前賽事，需再次輸入 PIN 確認。
+              JSON 是完整備份,可以配合「匯入」還原。CSV 是各表獨立檔案,
+              適合列印或用 Excel 開。匯入會覆蓋目前賽事,需再次輸入 PIN 確認。
             </p>
           </section>
         </>
