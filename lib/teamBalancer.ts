@@ -163,7 +163,11 @@ export function imbalance(members: Player[]): number {
   const idealSkill = 3;
   const skillDev = (skillMean - idealSkill) ** 2;
   const genderRatio = genderCounts.male / n - 0.5;
-  const genderDev = genderRatio ** 2;
+  // Raw genderRatio² tops out at 0.25 while skillDev can reach ~4, so gender
+  // barely competes in the local-search cost. ×16 puts it in the same order of
+  // magnitude as skill so mixed-strategy swap passes actually chase 4M+4F
+  // instead of treating it as a tiebreaker.
+  const genderDev = (genderRatio ** 2) * 16;
   let positionDev = 0;
   const idealPositionShare = 1 / 6;
   for (const c of Object.values(positionCounts)) {
