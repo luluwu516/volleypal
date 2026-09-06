@@ -70,7 +70,6 @@ export function GenerateScheduleForm({
       if (!res.ok) {
         // Server tells us a PIN is needed (regeneration guard). Open dialog.
         if (json.error === "pin_required") {
-          setBusy(false);
           setPinOpen(true);
           return;
         }
@@ -83,13 +82,13 @@ export function GenerateScheduleForm({
       router.refresh();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (pinOpen) {
-        setPinError(msg);
-        setBusy(false);
-      } else {
-        toast.error(msg);
-        setBusy(false);
-      }
+      if (pinOpen) setPinError(msg);
+      else toast.error(msg);
+    } finally {
+      // Always reset — router.refresh() re-runs server components but keeps
+      // client state, so without this the button sticks on "生成中…" after
+      // a successful run.
+      setBusy(false);
     }
   }
 

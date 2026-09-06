@@ -59,25 +59,27 @@ function normalizeResponses(raw: Record<string, unknown>): Record<string, string
   return out;
 }
 
-const POSITIONS = ["setter", "outside", "middle", "opposite", "libero", "any"];
 const GENDERS = ["male", "female", "other"];
+
+// Negation markers that flip "舉球" from a setter signal to an any signal.
+// Order matters: these are checked BEFORE the positive setter phrase so an
+// option like「千萬不要讓我舉球」or "please don't setter" resolves to `any`
+// instead of being wrongly caught by the plain includes("舉球") branch.
+const SETTER_NEGATION = ["不要", "非舉", "不想", "拒絕", "don't", "do not", "no setter", "non-setter", "non setter"];
 
 function normalizePosition(raw: string | null): string {
   if (!raw) return "any";
   const lower = raw.toLowerCase();
-  if (
-    lower.includes("non-setter") ||
-    lower.includes("non setter") ||
-    lower.includes("非舉")
-  ) {
+  const isSetterMention =
+    lower.includes("舉球") || lower.includes("二傳") || lower.includes("setter");
+  if (isSetterMention && SETTER_NEGATION.some((n) => lower.includes(n))) {
     return "any";
   }
-  if (lower.includes("舉球") || lower.includes("二傳")) return "setter";
-  if (lower.includes("主攻")) return "outside";
-  if (lower.includes("副攻") || lower.includes("攔網")) return "middle";
-  if (lower.includes("自由")) return "libero";
-  if (lower.includes("接應")) return "opposite";
-  for (const p of POSITIONS) if (lower.includes(p)) return p;
+  if (isSetterMention) return "setter";
+  if (lower.includes("主攻") || lower.includes("outside")) return "outside";
+  if (lower.includes("副攻") || lower.includes("攔網") || lower.includes("middle")) return "middle";
+  if (lower.includes("自由") || lower.includes("libero")) return "libero";
+  if (lower.includes("接應") || lower.includes("opposite")) return "opposite";
   return "any";
 }
 
