@@ -1,11 +1,35 @@
--- VolleyPal — consolidated baseline schema.
--- All test data was discarded before this consolidation; previous 0001-0008
--- incremental migrations have been collapsed into this single file.
+-- VolleyPal — baseline schema.
+--
+-- Pre-launch consolidation: all schema, enums, and updated_at triggers live
+-- here. RLS, RPCs, and the import_backups helper table each have their own
+-- follow-up migration so responsibility per file stays obvious.
 --
 -- Single source of truth: Supabase Postgres. Google Sheets is export-only.
 -- Admin auth lives at the Next.js layer (iron-session cookies), not Supabase.
 
 create extension if not exists pgcrypto;
+
+-- -------- Grants --------
+--
+-- Restores the schema-level grants that Supabase normally seeds when a new
+-- project is created. These get wiped by `drop schema public cascade` during
+-- a full reset, so keeping them here means "run every migration from 0001 on
+-- a bare schema and everything works" — no manual grant step required.
+--
+-- `service_role` bypasses RLS but still needs schema USAGE + per-object
+-- privileges; `anon` uses the SELECT grant + RLS policies from 0002 to serve
+-- public tournament data to the browser via the anon key.
+grant usage  on schema public to anon, authenticated, service_role;
+grant create on schema public to postgres, service_role;
+
+-- Defaults apply to every table / sequence / function created BELOW this line
+-- in this and subsequent migrations, so they automatically inherit grants.
+alter default privileges in schema public grant all    on tables    to service_role;
+alter default privileges in schema public grant all    on sequences to service_role;
+alter default privileges in schema public grant all    on functions to service_role;
+alter default privileges in schema public grant select on tables    to anon;
+
+-- -------- Enums --------
 
 create type tournament_mode as enum ('classic', 'zodiac');
 create type element_type as enum ('fire', 'earth', 'air', 'water');
@@ -22,11 +46,33 @@ create type match_status as enum ('pending', 'live', 'finished');
 create type group_label as enum ('A', 'B');
 create type announcement_level as enum ('info', 'warn', 'urgent');
 
+-- Grouping strategy drives the team-balancer's algorithm choice at
+-- `/api/admin/teams/generate` time. together = same-attribute sub-teams;
+-- mixed = 8 teams that each spread the attribute evenly.
+create type grouping_strategy as enum (
+  'zodiac_together',
+  'zodiac_mixed',
+  'mbti_together',
+  'mbti_mixed'
+);
+
+create type mbti_type as enum (
+  'INTJ', 'INTP', 'ENTJ', 'ENTP',
+  'INFJ', 'INFP', 'ENFJ', 'ENFP',
+  'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
+  'ISTP', 'ISFP', 'ESTP', 'ESFP'
+);
+
+create type mbti_temperament as enum ('NF', 'NT', 'SJ', 'SP');
+
+-- -------- Tables --------
+
 create table tournaments (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   year int not null,
   mode tournament_mode not null,
+  grouping_strategy grouping_strategy not null default 'zodiac_together',
   registration_opens_at timestamptz,
   registration_closes_at timestamptz,
   match_day_date date,
@@ -57,6 +103,7 @@ create table registrations (
   birthday date,
   position position_type not null default 'any',
   skill_level smallint check (skill_level between 1 and 5),
+  mbti mbti_type,
   phone text,
   email text,
   raw_form_payload jsonb,
@@ -71,6 +118,7 @@ create table teams (
   name text not null,
   color text,
   element element_type,
+  temperament mbti_temperament,
   captain_registration_id uuid references registrations(id) on delete set null,
   seed smallint,
   created_at timestamptz not null default now()
@@ -145,7 +193,8 @@ create table score_edits (
 );
 create index on score_edits (match_id, created_at desc);
 
--- updated_at triggers
+-- -------- updated_at triggers --------
+
 create or replace function set_updated_at() returns trigger as $$
 begin
   new.updated_at = now();
