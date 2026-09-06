@@ -1,15 +1,30 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 
 // Dump every table for the current tournament as one JSON blob. Handy for
 // end-of-event archival (Supabase free tier retention isn't forever) or
 // offline analysis. Admin-only; served inline so the browser saves it via
 // Content-Disposition.
-export async function GET() {
+//
+// Contains the full raw_form_payload (all PII from the Google Form) so
+// backups are complete enough to spin up a fresh Supabase during an event.
+// Blocked in locked (referee) mode — a phone handed to a scorer should not
+// be able to walk off with a copy of the roster.
+export async function GET(req: Request) {
   const sess = await getAdminSession();
   if (!sess.adminId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (sess.locked) {
+    return NextResponse.json({ error: "locked" }, { status: 403 });
+  }
+  if (!(await tryRateLimit(`export:${sess.adminId}:${clientIp(req)}`, 10, 60))) {
+    return NextResponse.json(
+      { error: "匯出過於頻繁,請稍後再試" },
+      { status: 429 },
+    );
   }
 
   const db = supabaseAdmin();

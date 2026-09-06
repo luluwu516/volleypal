@@ -39,8 +39,10 @@ export default async function SettingsPage() {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              JSON 是完整備份,可以配合「匯入」還原。CSV 是各表獨立檔案,
-              適合列印或用 Excel 開。匯入會覆蓋目前賽事,需再次輸入 PIN 確認。
+              JSON 是完整備份,可以配合「匯入」還原,含 Google 表單原始欄位
+              (email、電話、緊急聯絡人等),請放在安全的地方。CSV 是各表獨立
+              檔案,適合列印或用 Excel 開。匯入會覆蓋目前賽事,需再次輸入
+              PIN 確認。
             </p>
           </section>
         </>

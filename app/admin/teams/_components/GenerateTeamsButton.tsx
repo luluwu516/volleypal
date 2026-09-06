@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { GroupingStrategy } from "@/lib/db/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,8 @@ export function GenerateTeamsButton({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
   const copy = STRATEGY_COPY[strategy];
   const willReplace = existingCount > 0;
   // Roster is already visible to participants — flag the regen aggressively
@@ -72,16 +75,26 @@ export function GenerateTeamsButton({
 
   async function run() {
     setBusy(true);
+    setPinError(null);
     try {
       const res = await fetch("/api/admin/teams/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tournamentId }),
+        body: JSON.stringify(
+          willReplace ? { tournamentId, pin } : { tournamentId },
+        ),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "失敗");
+      if (!res.ok) {
+        if (res.status === 401 && willReplace) {
+          setPinError(json.error === "pin_required" ? "請輸入 PIN" : "PIN 不正確");
+          return;
+        }
+        throw new Error(json.error || "失敗");
+      }
       toast.success(`已產生 ${json.teams} 個隊伍`);
       setOpen(false);
+      setPin("");
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -91,7 +104,16 @@ export function GenerateTeamsButton({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) {
+          setPin("");
+          setPinError(null);
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button disabled={disabled}>{copy.label}</Button>
       </DialogTrigger>
@@ -118,13 +140,27 @@ export function GenerateTeamsButton({
             若確定要改,建議同時到頁首把「公開時間」重設為未來時間或「取消公開」。
           </div>
         )}
+        {willReplace && (
+          <div className="flex flex-col gap-1.5">
+            <Input
+              type="password"
+              inputMode="numeric"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="輸入你的 PIN 以確認"
+              autoFocus
+              disabled={busy}
+            />
+            {pinError && <p className="text-xs text-red-400">{pinError}</p>}
+          </div>
+        )}
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
             取消
           </Button>
           <Button
             onClick={run}
-            disabled={busy}
+            disabled={busy || (willReplace && pin.length < 4)}
             variant={willReplace ? "destructive" : "default"}
           >
             {busy ? "處理中…" : willReplace ? "確認重新分隊" : "確認產生"}

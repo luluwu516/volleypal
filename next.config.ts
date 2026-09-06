@@ -5,9 +5,9 @@ import type { NextConfig } from "next";
 import { env } from "./lib/env";
 env();
 
-// Baseline defense-in-depth headers. Skipping CSP for now — Next.js relies
-// on inline scripts + hydration bootstrap that would require nonce-based CSP
-// through middleware. The other headers below have no downside.
+// Baseline defense-in-depth headers. CSP itself is injected per-request from
+// proxy.ts (needs a per-request nonce, which the static header pipeline can't
+// provide). The headers here are static and apply site-wide.
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",

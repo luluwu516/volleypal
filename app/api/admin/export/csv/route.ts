@@ -3,6 +3,7 @@ import { z } from "zod";
 import { formatInTimeZone } from "date-fns-tz";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 import { elementFromBirthday, signFromBirthday } from "@/lib/zodiac";
 import { MBTI_TO_TEMPERAMENT } from "@/lib/mbti";
 import type { MbtiTypeCode } from "@/lib/db/types";
@@ -56,6 +57,15 @@ export async function GET(req: Request) {
   const sess = await getAdminSession();
   if (!sess.adminId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (sess.locked) {
+    return NextResponse.json({ error: "locked" }, { status: 403 });
+  }
+  if (!(await tryRateLimit(`export-csv:${sess.adminId}:${clientIp(req)}`, 20, 60))) {
+    return NextResponse.json(
+      { error: "匯出過於頻繁,請稍後再試" },
+      { status: 429 },
+    );
   }
 
   const { searchParams } = new URL(req.url);

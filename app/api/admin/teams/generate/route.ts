@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { findAdminByPin } from "@/lib/auth/pin";
+import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 import {
   buildTeamsForStrategy,
   validatePlayersFor,
@@ -9,7 +11,12 @@ import {
 } from "@/lib/teamBalancer";
 import type { MbtiTypeCode } from "@/lib/db/types";
 
-const Body = z.object({ tournamentId: z.string().uuid() });
+const Body = z.object({
+  tournamentId: z.string().uuid(),
+  // Required when regenerating over an existing team set (PIN re-check to
+  // prevent fat-fingered wipes after publish). Optional on first generation.
+  pin: z.string().min(4).max(32).optional(),
+});
 
 // Palette for team cards — 8 distinct hues so cards stay visually
 // distinguishable while names are still the generic 「隊伍 N」 (admin renames
@@ -33,8 +40,35 @@ export async function POST(req: Request) {
   if (sess.locked) {
     return NextResponse.json({ error: "locked" }, { status: 403 });
   }
-  const { tournamentId } = Body.parse(await req.json());
+  const body = Body.parse(await req.json());
+  const { tournamentId } = body;
   const db = supabaseAdmin();
+
+  // Regeneration guard: if teams already exist for this tournament, require
+  // the logged-in admin's PIN. Same pattern as /api/admin/schedule/generate.
+  // Prevents an accidental re-run from wiping team_members after publish.
+  const { count: existingTeamCount } = await db
+    .from("teams")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId);
+  if ((existingTeamCount ?? 0) > 0) {
+    if (!body.pin) {
+      return NextResponse.json(
+        { error: "pin_required", message: "已有隊伍,請輸入 PIN 確認重新分隊" },
+        { status: 401 },
+      );
+    }
+    if (!(await tryRateLimit(`teams-regen:${clientIp(req)}`, 5, 60))) {
+      return NextResponse.json(
+        { error: "嘗試次數過多,請稍後再試" },
+        { status: 429 },
+      );
+    }
+    const admin = await findAdminByPin(body.pin);
+    if (!admin || admin.id !== sess.adminId) {
+      return NextResponse.json({ error: "PIN 不正確" }, { status: 401 });
+    }
+  }
 
   const { data: tournament, error: tErr } = await db
     .from("tournaments")
