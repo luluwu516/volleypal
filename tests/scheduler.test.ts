@@ -76,6 +76,18 @@ describe("referee assignment (2 courts)", () => {
     }
   });
 
+  it("spreads referee load evenly across teams (max−min ≤ 1)", () => {
+    const matches = scheduleGroupStage(makeInput(2));
+    const counts = new Map<string, number>();
+    for (const m of matches) {
+      if (!m.refereeTeamId) continue;
+      counts.set(m.refereeTeamId, (counts.get(m.refereeTeamId) ?? 0) + 1);
+    }
+    const values = [...counts.values()];
+    // 12 refereed matches / 8 teams should give 1-2 each, never 3.
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+  });
+
   it("rotates referees — avoids same team back-to-back when possible", () => {
     const matches = scheduleGroupStage(makeInput(2));
     const slots = [

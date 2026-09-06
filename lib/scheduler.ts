@@ -142,9 +142,15 @@ function assignCourtsAndTimes(
 
 /**
  * Assign a referee team to each match by rotating through teams that aren't
- * playing in the current time slot. Avoids same team refereeing two slots in
- * a row when alternatives exist; also avoids the team that played the
- * previous slot (so they get a real rest).
+ * playing in the current time slot.
+ *
+ * Ordering (first key wins):
+ *   1. Fewest ref assignments so far — evens out total refereeing load so
+ *      one team doesn't end up doing 3× what another does over the group
+ *      stage. (In a 12-match / 6-slot / 2-court schedule that's 12 ref
+ *      shifts spread across 8 teams — 1-2 shifts each when balanced.)
+ *   2. Didn't ref last slot — spread the work in time, not just count.
+ *   3. Didn't play last slot — resting teams get a real rest.
  *
  * Mutates the input array (sets refereeTeamId). If there aren't enough
  * resting teams in a slot (i.e. numCourts > floor(totalTeams/2)), some
@@ -161,6 +167,8 @@ export function assignGroupRefs(
   }
 
   const sortedSlots = [...bySlot.entries()].sort(([a], [b]) => a - b);
+  const refCount = new Map<string, number>();
+  for (const id of allTeamIds) refCount.set(id, 0);
   let lastSlotPlaying = new Set<string>();
   let lastSlotRefs = new Set<string>();
 
@@ -172,13 +180,14 @@ export function assignGroupRefs(
     }
     const resting = allTeamIds.filter((id) => !playing.has(id));
 
-    // Preference order: didn't ref last slot AND didn't play last slot >
-    //                   didn't ref last slot >
-    //                   didn't play last slot >
-    //                   anyone resting
+    // Tier: didn't-ref-last (2) + didn't-play-last (1). Higher = fresher.
     const tier = (id: string) =>
       (lastSlotRefs.has(id) ? 0 : 2) + (lastSlotPlaying.has(id) ? 0 : 1);
-    const pool = [...resting].sort((a, b) => tier(b) - tier(a));
+    const pool = [...resting].sort((a, b) => {
+      const rc = (refCount.get(a) ?? 0) - (refCount.get(b) ?? 0);
+      if (rc !== 0) return rc;
+      return tier(b) - tier(a);
+    });
 
     const used = new Set<string>();
     for (const m of slotMatches) {
@@ -186,6 +195,7 @@ export function assignGroupRefs(
       if (ref) {
         m.refereeTeamId = ref;
         used.add(ref);
+        refCount.set(ref, (refCount.get(ref) ?? 0) + 1);
       } else {
         m.refereeTeamId = null;
       }
