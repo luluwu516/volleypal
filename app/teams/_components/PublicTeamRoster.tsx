@@ -5,6 +5,7 @@ import type {
   ElementType,
   MbtiTemperament,
 } from "@/lib/db/types";
+import { displayName } from "@/lib/format/name";
 import { elementFromBirthday, ELEMENT_LABELS_ZH } from "@/lib/zodiac";
 import { MBTI_TO_TEMPERAMENT, TEMPERAMENT_LABELS_ZH } from "@/lib/mbti";
 
@@ -56,7 +57,7 @@ export function PublicTeamRoster({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {teams.map((t) => {
         const roster = (membersByTeam.get(t.id) ?? []).slice().sort((a, b) =>
-          a.name.localeCompare(b.name, "zh-Hant"),
+          displayName(a).localeCompare(displayName(b), "zh-Hant"),
         );
         return (
           <div
@@ -92,7 +93,7 @@ export function PublicTeamRoster({
                       <span className="w-4 text-center" title={r.position ?? ""}>
                         {r.position === "setter" ? "🙌🏻" : ""}
                       </span>
-                      <span className="flex-1 truncate">{r.name}</span>
+                      <span className="flex-1 truncate">{displayName(r)}</span>
                       {attrLabel && (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           {attrDotClass && (

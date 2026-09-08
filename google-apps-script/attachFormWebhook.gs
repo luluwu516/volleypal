@@ -14,11 +14,13 @@
  *
  * What the form should ask for (webhook is tolerant on titles — case-
  * insensitive `includes` match — so exact wording doesn't matter):
- *   - 姓名 / Name  (required — the only always-present identifier)
- *   - Email        (strongly recommended — dedup / waiver-match key)
+ *   - 姓名 / Legal Name    (required — passport romanisation / Chinese full
+ *                           name; used as the waiver-match fallback)
+ *   - 暱稱 / Preferred Name (optional — English nickname etc.; display only)
+ *   - Email                (strongly recommended — dedup / waiver-match key)
  *   - 生日 / Birthday
  *   - 性別 / Gender
- *   - 國籍 / Nationality  (needed for the non-TW quota; missing → default TW)
+ *   - 國籍 / Nationality    (needed for the non-TW quota; missing → default TW)
  *   - 場上位置 / Position
  *   - MBTI, 電話, etc. (optional, saved to raw_form_payload for admin reference)
  *
@@ -136,13 +138,14 @@ function testOnFormSubmit() {
   // To reset between runs, delete the row from Supabase.
   var fakeEvent = {
     namedValues: {
-      '姓名':     ['測試球員'],
-      'Email':    ['test-player@example.com'],
-      '電話':     ['0900000000'],
-      '生日':     ['1990/06/15'],
-      '性別':     ['女'],
-      '國籍':     ['台灣'],
-      '場上位置': ['舉球員 (Setter)']
+      '姓名 / Legal Name':     ['測試球員'],
+      '暱稱 / Preferred Name': ['Alex'],
+      'Email':                 ['test-player@example.com'],
+      '電話':                  ['0900000000'],
+      '生日':                  ['1990/06/15'],
+      '性別':                  ['男'],
+      '國籍':                  ['台灣'],
+      '場上位置':              ['舉球員 (Setter)']
     }
   };
   onFormSubmit(fakeEvent);

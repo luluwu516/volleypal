@@ -68,6 +68,24 @@ URL and secret are the same for the registration form and the waiver form.
    - Run `createVolleyPalWaiverForm`. Share the public URL alongside the
      registration form URL.
 
+## Name convention (important)
+
+Southern California players routinely go by an English nickname (e.g. Wang
+Xiaoming → "Alex") that a venue-supplied waiver form has no chance of
+matching. To keep waiver ↔ registration matching reliable:
+
+- **姓名 / Legal Name** — the passport English romanisation, or the Chinese
+  full name. Ask players to write the SAME name on the waiver form. This is
+  the fallback matching key when email is missing / mistyped.
+- **暱稱 / Preferred Name** — optional. What admins and other players call
+  them day-to-day. Shown everywhere in the admin/public UIs; the legal name
+  is one tap away in the details popover.
+
+The webhook accepts `preferred_name`, `preferred name`, `暱稱`, `常用稱呼`,
+`nickname`, or `英文名` as the question title for the nickname column
+(case-insensitive substring match), so existing forms just need to add an
+optional question with any of those titles.
+
 ## How form matching works
 
 - Registration webhook → inserts / updates a `registrations` row keyed by

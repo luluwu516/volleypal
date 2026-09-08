@@ -3,9 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { formatInTimeZone } from "date-fns-tz";
-import { UserMinus, Trash2 } from "lucide-react";
 import type { Registration } from "@/lib/db/types";
+import { displayName } from "@/lib/format/name";
 import {
   signFromBirthday,
   elementFromBirthday,
@@ -16,17 +15,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/EmptyState";
-
-const TZ = process.env.NEXT_PUBLIC_APP_TZ || "America/Los_Angeles";
+import { RegistrationNameCell } from "./RegistrationNameCell";
+import { DeleteRegistrationDialog } from "./DeleteRegistrationDialog";
 
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
@@ -59,7 +50,9 @@ export function RosterList({
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(
-    [...registrations].sort((a, b) => a.name.localeCompare(b.name, "zh-Hant")),
+    [...registrations].sort((a, b) =>
+      displayName(a).localeCompare(displayName(b), "zh-Hant"),
+    ),
   );
   const [pending, startTransition] = useTransition();
   // Row targeted for deletion. Held in state so the PIN dialog stays mounted
@@ -152,9 +145,10 @@ export function RosterList({
                 key={r.id}
                 className="px-3 py-2 grid grid-cols-[1fr_auto_auto_auto_4rem] gap-2 items-center text-sm"
               >
-                <NameCell
+                <RegistrationNameCell
                   registration={r}
                   disabled={disabled}
+                  showDeactivate
                   onDeactivate={() => deactivate(r.id)}
                   onDeleteRequested={() => setPendingDelete(r)}
                 />
@@ -197,182 +191,6 @@ export function RosterList({
         }}
       />
     </>
-  );
-}
-
-function NameCell({
-  registration,
-  disabled,
-  onDeactivate,
-  onDeleteRequested,
-}: {
-  registration: Registration;
-  disabled: boolean;
-  onDeactivate: () => void;
-  onDeleteRequested: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const r = registration;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          className="text-left font-medium truncate rounded px-1 -mx-1 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {r.name}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-3 flex flex-col gap-3">
-        <div className="flex flex-col gap-0.5 text-sm">
-          <p className="font-semibold">{r.name}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            {r.email ?? "(無 email)"}
-          </p>
-          {r.phone && (
-            <p className="text-xs text-muted-foreground">{r.phone}</p>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>國籍</span>
-          <span className="text-foreground">
-            {r.is_taiwanese ? "台灣" : "非台灣"}
-          </span>
-          <span>Waiver</span>
-          <span className="text-foreground">
-            {r.waiver_signed_at
-              ? formatInTimeZone(new Date(r.waiver_signed_at), TZ, "MM/dd HH:mm")
-              : "未簽署"}
-          </span>
-          <span>確認時間</span>
-          <span className="text-foreground">
-            {r.confirmed_at
-              ? formatInTimeZone(new Date(r.confirmed_at), TZ, "MM/dd HH:mm")
-              : "—"}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setOpen(false);
-              onDeactivate();
-            }}
-            disabled={disabled}
-          >
-            <UserMinus className="size-4" />
-            退回候補
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setOpen(false);
-              onDeleteRequested();
-            }}
-            disabled={disabled}
-            className="text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50"
-          >
-            <Trash2 className="size-4" />
-            刪除報名
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function DeleteRegistrationDialog({
-  target,
-  onClose,
-  onDeleted,
-}: {
-  target: Registration | null;
-  onClose: () => void;
-  onDeleted: () => void;
-}) {
-  const [pin, setPin] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!target) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/registration/${target.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? "刪除失敗");
-      }
-      toast.success("已刪除");
-      setPin("");
-      onDeleted();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Dialog
-      open={Boolean(target)}
-      onOpenChange={(o) => {
-        if (!o) {
-          setPin("");
-          setError(null);
-          setBusy(false);
-          onClose();
-        }
-      }}
-    >
-      <DialogContent className="border-red-500/50" showCloseButton={false}>
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          <DialogTitle>刪除 {target?.name}?</DialogTitle>
-          <DialogDescription>
-            此操作無法還原。若只是暫時移出球員列表,用「退回候補」。
-            輸入你登入的 PIN 以確認刪除。
-          </DialogDescription>
-          <Input
-            type="password"
-            inputMode="numeric"
-            autoFocus
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN"
-            disabled={busy}
-          />
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={busy}
-              className="flex-1"
-            >
-              取消
-            </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={busy || pin.length < 4}
-              className="flex-1"
-            >
-              {busy ? "刪除中…" : "確認刪除"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 

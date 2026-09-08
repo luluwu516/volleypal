@@ -183,6 +183,18 @@ async function handleRegistration(
   const birthday = parseBirthday(birthdayRaw);
   const email = pick(r, ["email", "e-mail", "電子郵件", "電子信箱"]);
   const phone = pick(r, ["phone", "電話"]);
+  // Preferred / nickname — optional. Legal `name` remains the waiver-match
+  // key; this is display-only. Aliases cover the common Google-Form title
+  // variants organizers reach for.
+  const preferredName = pick(r, [
+    "preferred_name",
+    "preferred name",
+    "preferred",
+    "nickname",
+    "暱稱",
+    "常用稱呼",
+    "英文名",
+  ]);
   const gender = normalizeGender(pick(r, ["gender", "性別", "sex"]));
   const position = normalizePosition(pick(r, ["position", "位置"]));
   const mbti = normalizeMbti(pick(r, ["mbti", "人格", "性格"]));
@@ -193,6 +205,7 @@ async function handleRegistration(
   const row: Record<string, unknown> = {
     tournament_id: tournamentId,
     name,
+    preferred_name: preferredName,
     gender,
     birthday,
     position,
@@ -261,6 +274,10 @@ async function handleRegistration(
       // payload (name+email only) gets routed to the registration handler.
       const patch: Record<string, unknown> = { name };
       if (email) patch.email = email;
+      // Only write when the form actually returned something. pick() collapses
+      // "field absent" and "field left blank" into null; both should leave a
+      // previously-set nickname alone (admin can clear it manually).
+      if (preferredName != null) patch.preferred_name = preferredName;
       if (gender != null) patch.gender = gender;
       if (birthday != null) patch.birthday = birthday;
       if (position && position !== "any") patch.position = position;

@@ -47,10 +47,20 @@ function createVolleyPalForm() {
       .setAllowResponseEdits(true)
       .setShowLinkToRespondAgain(false);
 
-  // 姓名
+  // 姓名 — the passport / legal name, used as the waiver-match fallback
+  // and shown to admin in the details popover. Nickname goes in the next
+  // question.
   form.addTextItem()
-      .setTitle('姓名')
+      .setTitle('姓名 / Legal Name')
+      .setHelpText('請填寫護照上的英文拼音（例：Wang Xiaoming），或中文全名。此欄用於對照 waiver 表單。')
       .setRequired(true);
+
+  // Preferred name — optional day-to-day nickname. Falls back to 姓名 when
+  // blank via displayName() on the app side.
+  form.addTextItem()
+      .setTitle('暱稱 / Preferred Name')
+      .setHelpText('日常稱呼，例：Alex。留空則顯示上方姓名。')
+      .setRequired(false);
 
   // Email (used as dedup key in /api/form-webhook)
   var emailRegex = '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$';
@@ -226,15 +236,16 @@ function testOnFormSubmit() {
   // To reset the test lane between runs, delete this row from Supabase.
   var fakeEvent = {
     namedValues: {
-      '姓名':   ['測試球員'],
-      'Email':  ['test-player@example.com'],
-      '電話':   ['0900000000'],
-      '生日':   ['1990/06/15'],
-      '性別':   ['女'],
-      '國籍':   ['台灣'],
-      '場上位置': ['舉球員 (Setter)'],
-      'Facebook': ['fb.com/test'],
-      '聚餐意願':  ['參加']
+      '姓名 / Legal Name':  ['Wang Xiaoming'],
+      '暱稱 / Preferred Name': ['Alex'],
+      'Email':               ['test-player@example.com'],
+      '電話':                ['0900000000'],
+      '生日':                ['1990/06/15'],
+      '性別':                ['女'],
+      '國籍':                ['台灣'],
+      '場上位置':            ['舉球員 (Setter)'],
+      'Facebook':            ['fb.com/test'],
+      '聚餐意願':            ['參加']
     }
   };
   onFormSubmit(fakeEvent);

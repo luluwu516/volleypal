@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import type { PendingWaiver, Registration } from "@/lib/db/types";
+import { displayName } from "@/lib/format/name";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -82,7 +83,10 @@ function PendingRow({
       .filter((r) => {
         const email = (r.email ?? "").toLowerCase();
         const name = r.name.toLowerCase();
-        return email.includes(q) || name.includes(q);
+        const preferred = (r.preferred_name ?? "").toLowerCase();
+        // Match against legal name, nickname, and email — admin might type
+        // "Alex" (nickname) or "Wang" (legal) for the same person.
+        return email.includes(q) || name.includes(q) || preferred.includes(q);
       })
       .slice(0, 20);
   }, [query, registrations]);
@@ -176,21 +180,32 @@ function PendingRow({
               </p>
             ) : (
               <ul className="flex flex-col">
-                {candidates.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      onClick={() => match(c.id)}
-                      disabled={busy}
-                      className="w-full text-left rounded px-2 py-1.5 hover:bg-white/5 disabled:opacity-50"
-                    >
-                      <p className="text-sm font-medium truncate">{c.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {c.email ?? "(無 email)"}
-                      </p>
-                    </button>
-                  </li>
-                ))}
+                {candidates.map((c) => {
+                  const preferred = c.preferred_name?.trim();
+                  const showLegal = preferred && preferred !== c.name;
+                  return (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => match(c.id)}
+                        disabled={busy}
+                        className="w-full text-left rounded px-2 py-1.5 hover:bg-white/5 disabled:opacity-50"
+                      >
+                        <p className="text-sm font-medium truncate">
+                          {displayName(c)}
+                          {showLegal && (
+                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                              ({c.name})
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {c.email ?? "(無 email)"}
+                        </p>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </PopoverContent>

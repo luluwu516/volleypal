@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRightLeft, Pencil } from "lucide-react";
 import type { GroupingStrategy, Registration, Team } from "@/lib/db/types";
+import { displayName } from "@/lib/format/name";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -225,7 +226,7 @@ export function TeamsBoard({
                                 {TEMPERAMENT_STYLE[attr].label}
                               </span>
                             )}
-                          <span className="font-medium truncate">{m.name}</span>
+                          <span className="font-medium truncate">{displayName(m)}</span>
                           {m.gender && (
                             <span className="text-xs text-muted-foreground shrink-0">
                               {m.gender === "female"

@@ -123,7 +123,7 @@ async function buildRegistrationsCsv(db: DB, tid: string): Promise<string> {
   const { data } = await db
     .from("registrations")
     .select(
-      "name, email, phone, gender, birthday, position, mbti, skill_level, is_taiwanese, waiver_signed_at, is_active, created_at",
+      "name, preferred_name, email, phone, gender, birthday, position, mbti, skill_level, is_taiwanese, waiver_signed_at, is_active, created_at",
     )
     .eq("tournament_id", tid)
     .order("created_at", { ascending: true });
@@ -131,6 +131,7 @@ async function buildRegistrationsCsv(db: DB, tid: string): Promise<string> {
     const { sign, element } = attrLabel(r.birthday);
     return [
       r.name,
+      r.preferred_name ?? "",
       r.email ?? "",
       r.phone ?? "",
       r.gender ?? "",
@@ -150,6 +151,7 @@ async function buildRegistrationsCsv(db: DB, tid: string): Promise<string> {
   return csvDoc(
     [
       "姓名",
+      "暱稱",
       "Email",
       "電話",
       "性別",
@@ -178,7 +180,7 @@ async function buildTeamsCsv(db: DB, tid: string): Promise<string> {
   const teamIds = (teams ?? []).map((t) => t.id);
   if (teamIds.length === 0) {
     return csvDoc(
-      ["隊伍", "成員姓名", "場上位置", "性別", "星座", "星座象", "MBTI"],
+      ["隊伍", "成員姓名", "暱稱", "場上位置", "性別", "星座", "星座象", "MBTI"],
       [],
     );
   }
@@ -188,7 +190,7 @@ async function buildTeamsCsv(db: DB, tid: string): Promise<string> {
     .in("team_id", teamIds);
   const { data: regs } = await db
     .from("registrations")
-    .select("id, name, gender, birthday, position, mbti")
+    .select("id, name, preferred_name, gender, birthday, position, mbti")
     .eq("tournament_id", tid);
   const regById = new Map((regs ?? []).map((r) => [r.id, r]));
 
@@ -196,7 +198,7 @@ async function buildTeamsCsv(db: DB, tid: string): Promise<string> {
   for (const t of teams ?? []) {
     const teamMembers = (members ?? []).filter((m) => m.team_id === t.id);
     if (teamMembers.length === 0) {
-      rows.push([t.name, "", "", "", "", "", ""]);
+      rows.push([t.name, "", "", "", "", "", "", ""]);
       continue;
     }
     for (const m of teamMembers) {
@@ -206,6 +208,7 @@ async function buildTeamsCsv(db: DB, tid: string): Promise<string> {
       rows.push([
         t.name,
         r.name,
+        r.preferred_name ?? "",
         r.position ?? "",
         r.gender ?? "",
         sign,
@@ -215,7 +218,7 @@ async function buildTeamsCsv(db: DB, tid: string): Promise<string> {
     }
   }
   return csvDoc(
-    ["隊伍", "成員姓名", "場上位置", "性別", "星座", "星座象", "MBTI"],
+    ["隊伍", "成員姓名", "暱稱", "場上位置", "性別", "星座", "星座象", "MBTI"],
     rows,
   );
 }

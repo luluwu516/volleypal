@@ -118,7 +118,14 @@ create table admins (
 create table registrations (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,
+  -- `name` is the legal / passport-romanised name — used as the fallback
+  -- matching key against waiver submissions when email isn't reliable, and as
+  -- the identity for admin lookup. Kept required.
   name text not null,
+  -- Optional day-to-day nickname (e.g. English "Alex" for a Chinese-legal-name
+  -- player). All admin/public UIs display `preferred_name || name` via
+  -- `displayName()` — falls back cleanly when this is null/blank.
+  preferred_name text,
   gender gender_type,
   birthday date,
   position position_type not null default 'any',

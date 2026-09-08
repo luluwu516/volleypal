@@ -69,6 +69,7 @@ export interface Registration {
   id: string;
   tournament_id: string;
   name: string;
+  preferred_name: string | null;
   gender: GenderType | null;
   birthday: string | null;
   position: PositionType;

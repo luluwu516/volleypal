@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import type { Registration } from "@/lib/db/types";
+import { displayName } from "@/lib/format/name";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { RegistrationNameCell } from "./RegistrationNameCell";
+import { DeleteRegistrationDialog } from "./DeleteRegistrationDialog";
 
 const TZ = process.env.NEXT_PUBLIC_APP_TZ || "America/Los_Angeles";
 
@@ -21,6 +24,10 @@ interface Props {
  *   2. Admin clicks 確認 = commit
  * Prevents a rogue tap from moving someone onto the roster prematurely.
  *
+ * Tapping the name opens a details Popover (email/phone/legal name/waiver
+ * time) with a 刪除報名 action — same pattern as the active roster, minus
+ * the 退回候補 action (candidates are already inactive).
+ *
  * Server enforces caps (roster full / non-TW quota full) — the response
  * carries a `reason` code we surface inline in red so admin knows why the
  * click didn't take.
@@ -31,6 +38,7 @@ export function WaitlistTable({ waitlist, disabled = false }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorById, setErrorById] = useState<Map<string, string>>(new Map());
   const [pending, startTransition] = useTransition();
+  const [pendingDelete, setPendingDelete] = useState<Registration | null>(null);
 
   function toggleArm(id: string) {
     setArmed((prev) => {
@@ -87,52 +95,69 @@ export function WaitlistTable({ waitlist, disabled = false }: Props) {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border/40 rounded-lg border">
-      {waitlist.map((r) => {
-        const isArmed = armed.has(r.id);
-        const err = errorById.get(r.id);
-        const isBusy = busyId === r.id || pending;
-        return (
-          <li key={r.id} className="flex flex-col gap-1.5 px-3 py-2.5">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                aria-label={`已收到 ${r.name} 的款項`}
-                checked={isArmed}
-                onChange={() => toggleArm(r.id)}
-                disabled={disabled || isBusy}
-                className="size-5 rounded border-input accent-emerald-500 shrink-0"
-              />
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <span className="font-medium truncate">{r.name}</span>
-                <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${
-                    r.is_taiwanese
-                      ? "bg-emerald-500/15 text-emerald-300"
-                      : "bg-amber-500/15 text-amber-300"
-                  }`}
-                >
-                  {r.is_taiwanese ? "TW" : "非TW"}
+    <>
+      <ul className="flex flex-col divide-y divide-border/40 rounded-lg border">
+        {waitlist.map((r) => {
+          const isArmed = armed.has(r.id);
+          const err = errorById.get(r.id);
+          const isBusy = busyId === r.id || pending;
+          return (
+            <li key={r.id} className="flex flex-col gap-1.5 px-3 py-2.5">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  aria-label={`已收到 ${displayName(r)} 的款項`}
+                  checked={isArmed}
+                  onChange={() => toggleArm(r.id)}
+                  disabled={disabled || isBusy}
+                  className="size-5 rounded border-input accent-emerald-500 shrink-0"
+                />
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <RegistrationNameCell
+                    registration={r}
+                    disabled={disabled}
+                    showDeactivate={false}
+                    onDeleteRequested={() => setPendingDelete(r)}
+                    className="text-left font-medium truncate rounded px-1 -mx-1 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60 disabled:cursor-not-allowed min-w-0"
+                  />
+                  <span
+                    className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${
+                      r.is_taiwanese
+                        ? "bg-emerald-500/15 text-emerald-300"
+                        : "bg-amber-500/15 text-amber-300"
+                    }`}
+                  >
+                    {r.is_taiwanese ? "TW" : "非TW"}
+                  </span>
+                </div>
+                <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                  {formatInTimeZone(new Date(r.created_at), TZ, "MM/dd HH:mm")}
                 </span>
+                <Button
+                  size="sm"
+                  onClick={() => confirm(r.id)}
+                  disabled={disabled || !isArmed || isBusy}
+                  className="shrink-0"
+                >
+                  {isBusy && busyId === r.id ? "..." : "確認"}
+                </Button>
               </div>
-              <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
-                {formatInTimeZone(new Date(r.created_at), TZ, "MM/dd HH:mm")}
-              </span>
-              <Button
-                size="sm"
-                onClick={() => confirm(r.id)}
-                disabled={disabled || !isArmed || isBusy}
-                className="shrink-0"
-              >
-                {isBusy && busyId === r.id ? "..." : "確認"}
-              </Button>
-            </div>
-            {err && (
-              <p className="text-xs text-red-400 pl-8">{err}</p>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+              {err && <p className="text-xs text-red-400 pl-8">{err}</p>}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        點名字看詳細 / 刪除報名
+      </p>
+      <DeleteRegistrationDialog
+        target={pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onDeleted={() => {
+          setPendingDelete(null);
+          startTransition(() => router.refresh());
+        }}
+      />
+    </>
   );
 }
