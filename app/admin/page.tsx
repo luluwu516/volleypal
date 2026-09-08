@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Settings } from "lucide-react";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { getCurrentTournament } from "@/lib/db/repository";
 import type { GroupingStrategy } from "@/lib/db/types";
@@ -38,10 +39,16 @@ export default async function AdminHome() {
 
       {tournament ? (
         <TournamentCardLink disabled={locked}>
-          <Card className="transition-colors hover:border-border">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">
-                {tournament.name} · {tournament.year}
+          {/* gap-1 + py-3 override the shadcn defaults (gap-6 + py-6) so
+              this info card stays compact — it's only two lines of text. */}
+          <Card className="gap-1 py-3 transition-colors hover:border-border">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-base flex flex-col gap-1">
+                <span className="inline-flex items-center gap-1 text-[11px] font-normal text-muted-foreground uppercase tracking-wider">
+                  <Settings className="size-3.5" aria-hidden />
+                  賽事設定
+                </span>
+                <span className="truncate">{tournament.name}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">

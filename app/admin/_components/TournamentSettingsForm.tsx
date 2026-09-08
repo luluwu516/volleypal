@@ -122,8 +122,14 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
   }
 
   return (
-    <Card>
-      <CardHeader>
+    // Wrapper div bounds the sticky save button's containing block so it
+    // stops floating exactly when scrolled past the Card — the export
+    // section below is a sibling of this wrapper, safe from overlap.
+    <div className="flex flex-col gap-3">
+    {/* gap-2 + py-3 override the shadcn Card defaults (gap-6 + py-6) so
+        this form fits an iPhone SE viewport with less scrolling. */}
+    <Card className="gap-2 py-3">
+      <CardHeader className="pb-1">
         <CardTitle className="text-base">
           {tournament.name} · {tournament.year}
         </CardTitle>
@@ -211,7 +217,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           </p>
         </div>
 
-        <div className="border-t border-border/40 pt-3">
+        <div className="border-t border-border/40 pt-2">
           <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
             報名人數上限
           </p>
@@ -244,7 +250,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           </div>
         </div>
 
-        <div className="border-t border-border/40 pt-3 mt-1">
+        <div className="border-t border-border/40 pt-2">
           <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
             比賽詳情連結
           </p>
@@ -282,7 +288,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           </div>
         </div>
 
-        <div className="border-t border-border/40 pt-3">
+        <div className="border-t border-border/40 pt-2">
           <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
             場館資訊
           </p>
@@ -330,7 +336,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           </div>
         </div>
 
-        <div className="border-t border-border/40 pt-3">
+        <div className="border-t border-border/40 pt-2">
           <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
             食物選擇
           </p>
@@ -378,19 +384,29 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button onClick={save} disabled={busy || !dirty} className="flex-1">
-            {busy ? "儲存中…" : "儲存"}
-          </Button>
-          {dirty && !busy && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/40 px-2 py-1 text-[11px] text-amber-200">
-              <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
-              有未儲存變更
-            </span>
-          )}
-        </div>
         </fieldset>
       </CardContent>
     </Card>
+
+    {/* Floating save bar — mirrors the pattern used by 一鍵分隊 on
+        /admin/teams. Sticks above BottomNav (≈4rem) + safe-area, and
+        stops naturally at the wrapper div's bottom so the JSON/CSV
+        export section below never gets covered. */}
+    <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 border-t border-border/30 flex items-center gap-2">
+      <Button
+        onClick={save}
+        disabled={busy || !dirty || disabled}
+        className="flex-1"
+      >
+        {busy ? "儲存中…" : "儲存"}
+      </Button>
+      {dirty && !busy && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/40 px-2 py-1 text-[11px] text-amber-200">
+          <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+          有未儲存變更
+        </span>
+      )}
+    </div>
+    </div>
   );
 }
