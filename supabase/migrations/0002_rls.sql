@@ -43,6 +43,7 @@ create policy "public read team_members" on team_members for select using (
 );
 
 -- PII / sensitive: locked down. No anon policies = no access.
-alter table registrations enable row level security;
-alter table admins        enable row level security;
-alter table score_edits   enable row level security;
+alter table registrations   enable row level security;
+alter table admins          enable row level security;
+alter table score_edits     enable row level security;
+alter table pending_waivers enable row level security;

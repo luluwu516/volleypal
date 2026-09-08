@@ -83,6 +83,12 @@ create table tournaments (
   num_courts smallint not null default 2,
   match_duration_min smallint not null default 30,
   group_stage_time_limit_min smallint,
+  -- Roster caps. max_active_participants is the hard total; max_non_taiwanese
+  -- is a hard sub-cap for non-Taiwanese so the reserved foreign-player slots
+  -- can't be eaten by first-come locals. Both are enforced at the
+  -- admin-confirm step, not at webhook time.
+  max_active_participants smallint not null default 80,
+  max_non_taiwanese smallint not null default 10,
 
   -- Public-facing tournament info (rendered on Home page)
   rules_doc_url text,
@@ -99,6 +105,16 @@ create table tournaments (
   created_at timestamptz not null default now()
 );
 
+-- Admins moved above registrations because registrations.confirmed_by
+-- references admins(id). score_edits also references admins so keeping it
+-- near the top keeps the FK-forward-only rule intact.
+create table admins (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  pin_hash text not null,
+  created_at timestamptz not null default now()
+);
+
 create table registrations (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,
@@ -110,11 +126,26 @@ create table registrations (
   mbti mbti_type,
   phone text,
   email text,
+  -- Nationality captured on the registration form. Default true (Taiwan) is
+  -- deliberate — the 10 non-TW slots are reserved, so misclassifying an
+  -- unknown-nationality registrant as TW under-allocates rather than eating
+  -- a foreign-player slot by accident.
+  is_taiwanese boolean not null default true,
+  -- Waiver signature timestamp, stamped when the waiver Google Form is
+  -- submitted with a matching email. Null = waiver still outstanding.
+  waiver_signed_at timestamptz,
+  -- Admin-confirmed active roster gate. Even if both forms are in, the
+  -- registrant is NOT on the roster until an admin verifies payment and
+  -- clicks confirm. Cap enforcement lives on the confirm endpoint.
+  is_active boolean not null default false,
+  confirmed_by uuid references admins(id) on delete set null,
+  confirmed_at timestamptz,
   raw_form_payload jsonb,
   created_at timestamptz not null default now(),
   unique (tournament_id, email)
 );
 create index on registrations (tournament_id);
+create index on registrations (tournament_id, is_active);
 
 create table teams (
   id uuid primary key default gen_random_uuid(),
@@ -168,13 +199,6 @@ create table match_sets (
   primary key (match_id, set_no)
 );
 
-create table admins (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  pin_hash text not null,
-  created_at timestamptz not null default now()
-);
-
 create table announcements (
   id uuid primary key default gen_random_uuid(),
   tournament_id uuid not null references tournaments(id) on delete cascade,
@@ -196,6 +220,20 @@ create table score_edits (
   created_at timestamptz not null default now()
 );
 create index on score_edits (match_id, created_at desc);
+
+-- Waivers that arrived before a matching registration (typo'd email, or the
+-- registrant hasn't submitted the registration form yet). Admin UI shows
+-- these in a dedicated section with a "配對到..." action that stamps
+-- waiver_signed_at on a chosen registration and deletes the pending row.
+create table pending_waivers (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references tournaments(id) on delete cascade,
+  email text,
+  name text,
+  submitted_at timestamptz not null default now(),
+  raw_payload jsonb not null
+);
+create index on pending_waivers (tournament_id, submitted_at desc);
 
 -- -------- updated_at triggers --------
 

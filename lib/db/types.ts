@@ -50,6 +50,8 @@ export interface Tournament {
   num_courts: number;
   match_duration_min: number;
   group_stage_time_limit_min: number | null;
+  max_active_participants: number;
+  max_non_taiwanese: number;
   rules_doc_url: string | null;
   registration_form_url: string | null;
   waiver_url: string | null;
@@ -74,8 +76,22 @@ export interface Registration {
   mbti: MbtiTypeCode | null;
   phone: string | null;
   email: string | null;
+  is_taiwanese: boolean;
+  waiver_signed_at: string | null;
+  is_active: boolean;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
   raw_form_payload: unknown;
   created_at: string;
+}
+
+export interface PendingWaiver {
+  id: string;
+  tournament_id: string;
+  email: string | null;
+  name: string | null;
+  submitted_at: string;
+  raw_payload: unknown;
 }
 
 export interface Team {
