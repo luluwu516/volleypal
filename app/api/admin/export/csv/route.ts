@@ -123,7 +123,7 @@ async function buildRegistrationsCsv(db: DB, tid: string): Promise<string> {
   const { data } = await db
     .from("registrations")
     .select(
-      "name, email, phone, gender, birthday, position, mbti, skill_level, created_at",
+      "name, email, phone, gender, birthday, position, mbti, skill_level, is_taiwanese, waiver_signed_at, is_active, created_at",
     )
     .eq("tournament_id", tid)
     .order("created_at", { ascending: true });
@@ -141,6 +141,9 @@ async function buildRegistrationsCsv(db: DB, tid: string): Promise<string> {
       sign,
       element,
       r.skill_level ?? "",
+      r.is_taiwanese ? "台灣" : "非台灣",
+      r.waiver_signed_at ? fmtTs(r.waiver_signed_at) : "",
+      r.is_active ? "是" : "否",
       fmtTs(r.created_at),
     ];
   });
@@ -157,6 +160,9 @@ async function buildRegistrationsCsv(db: DB, tid: string): Promise<string> {
       "星座",
       "星座象",
       "實力",
+      "國籍",
+      "Waiver 簽署",
+      "已確認",
       "報名時間",
     ],
     rows,

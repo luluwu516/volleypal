@@ -36,6 +36,8 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
   const [groupTimeLimit, setGroupTimeLimit] = useState(
     tournament.group_stage_time_limit_min ?? 0,
   );
+  const [maxActive, setMaxActive] = useState(tournament.max_active_participants);
+  const [maxNonTw, setMaxNonTw] = useState(tournament.max_non_taiwanese);
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_doc_url ?? "");
   const [regUrl, setRegUrl] = useState(tournament.registration_form_url ?? "");
   const [waiverUrl, setWaiverUrl] = useState(tournament.waiver_url ?? "");
@@ -62,6 +64,8 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
     numCourts !== tournament.num_courts ||
     matchDuration !== tournament.match_duration_min ||
     groupTimeLimit !== (tournament.group_stage_time_limit_min ?? 0) ||
+    maxActive !== tournament.max_active_participants ||
+    maxNonTw !== tournament.max_non_taiwanese ||
     rulesUrl !== (tournament.rules_doc_url ?? "") ||
     regUrl !== (tournament.registration_form_url ?? "") ||
     waiverUrl !== (tournament.waiver_url ?? "") ||
@@ -74,6 +78,10 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
     nearby !== (tournament.venue_nearby ?? "");
 
   async function save() {
+    if (maxNonTw > maxActive) {
+      toast.error("非台灣配額不能超過總人數上限");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/tournament/${tournament.id}`, {
@@ -86,6 +94,8 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           num_courts: numCourts,
           match_duration_min: matchDuration,
           group_stage_time_limit_min: groupTimeLimit || null,
+          max_active_participants: maxActive,
+          max_non_taiwanese: maxNonTw,
           rules_doc_url: rulesUrl || null,
           registration_form_url: regUrl || null,
           waiver_url: waiverUrl || null,
@@ -199,6 +209,39 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           <p className="text-xs text-muted-foreground mt-1">
             時間到當下比分高的一方獲勝。留 0 = 不限時，照正規規則打到三戰兩勝。
           </p>
+        </div>
+
+        <div className="border-t border-border/40 pt-3">
+          <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
+            報名人數上限
+          </p>
+          <div className="flex flex-col gap-3">
+            <div>
+              <Label htmlFor="maxActive">總球員數上限</Label>
+              <Input
+                id="maxActive"
+                type="number"
+                min={8}
+                max={200}
+                value={maxActive}
+                onChange={(e) => setMaxActive(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="maxNonTw">非台灣人上限</Label>
+              <Input
+                id="maxNonTw"
+                type="number"
+                min={0}
+                max={maxActive}
+                value={maxNonTw}
+                onChange={(e) => setMaxNonTw(Number(e.target.value))}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                硬上限 — 超過就進候補,不管台灣人有沒有滿。台灣人補足剩下的名額。
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="border-t border-border/40 pt-3 mt-1">

@@ -6,13 +6,16 @@ import {
 import { GenerateTeamsButton } from "./_components/GenerateTeamsButton";
 import { CancelTeamsButton } from "./_components/CancelTeamsButton";
 import { PublishTimePicker } from "./_components/PublishTimePicker";
-import { RosterList } from "./_components/RosterList";
+import { ActiveRosterHeader } from "./_components/ActiveRosterHeader";
+import { RegistrationTabs } from "./_components/RegistrationTabs";
+import { PendingWaiverList } from "./_components/PendingWaiverList";
 import { TeamsBoard } from "./_components/TeamsBoard";
 import { BackLink } from "@/components/nav/BackLink";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminSession } from "@/lib/auth/getSession";
+import type { PendingWaiver } from "@/lib/db/types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +40,19 @@ export default async function TeamsPage() {
   }
   const locked = Boolean(sess.locked);
 
-  const [teams, registrations] = await Promise.all([
+  const db = supabaseAdmin();
+  const [teams, registrations, pendingWaiversRes] = await Promise.all([
     listTeams(tournament.id),
     listRegistrations(tournament.id),
+    db
+      .from("pending_waivers")
+      .select("*")
+      .eq("tournament_id", tournament.id)
+      .order("submitted_at", { ascending: true }),
   ]);
+  const pendingWaivers = (pendingWaiversRes.data ?? []) as PendingWaiver[];
 
-  const { data: members } = await supabaseAdmin()
+  const { data: members } = await db
     .from("team_members")
     .select("team_id, registration_id")
     .in(
@@ -50,7 +60,8 @@ export default async function TeamsPage() {
       teams.map((t) => t.id),
     );
 
-  const canGenerate = registrations.length >= 8;
+  const activeCount = registrations.filter((r) => r.is_active).length;
+  const canGenerate = activeCount >= 8;
   const STRATEGY_LABEL: Record<string, string> = {
     zodiac_together: "同星座象",
     zodiac_mixed: "打散星座象",
@@ -67,7 +78,7 @@ export default async function TeamsPage() {
       <header>
         <h1 className="text-xl font-bold">分隊</h1>
         <p className="text-xs text-muted-foreground">
-          報名 {registrations.length} · 隊伍 {teams.length} · 策略 {strategyLabel}
+          已確認 {activeCount} · 隊伍 {teams.length} · 策略 {strategyLabel}
         </p>
       </header>
 
@@ -78,12 +89,19 @@ export default async function TeamsPage() {
         disabled={locked}
       />
 
-      <section>
-        <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
-          球員列表
-        </h2>
-        <RosterList registrations={registrations} disabled={locked} />
-      </section>
+      <ActiveRosterHeader
+        tournament={tournament}
+        registrations={registrations}
+      />
+
+      <RegistrationTabs registrations={registrations} disabled={locked} />
+
+      <PendingWaiverList
+        pending={pendingWaivers}
+        registrations={registrations}
+        disabled={locked}
+      />
+
 
       {teams.length > 0 && (
         <section>
@@ -118,7 +136,7 @@ export default async function TeamsPage() {
         />
         {!canGenerate && (
           <p className="text-xs text-amber-400 text-center">
-            ⚠ 需 ≥ 8 位報名者才能分隊（目前 {registrations.length}）
+            ⚠ 需 ≥ 8 位已確認球員才能分隊（目前 {activeCount}）
           </p>
         )}
         {teams.length > 0 && (
