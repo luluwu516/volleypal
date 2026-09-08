@@ -112,7 +112,7 @@ function createVolleyPalForm() {
       .setRequired(true);
 
   // Install the onFormSubmit trigger so submissions push to Vercel
-  removeExistingFormTriggers_();
+  removeExistingFormTriggers_(form);
   ScriptApp.newTrigger('onFormSubmit')
     .forForm(form)
     .onFormSubmit()
@@ -138,11 +138,19 @@ function createVolleyPalForm() {
              props.getProperty('SUPABASE_WEBHOOK_URL'));
 }
 
-function removeExistingFormTriggers_() {
+function removeExistingFormTriggers_(form) {
+  // Only remove onFormSubmit triggers pointing at THIS form. Wiping every
+  // form-submit trigger in the project would break sibling scripts that also
+  // POST to the webhook (e.g. the waiver form). form.getId() must match.
+  var formId = form.getId();
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'onFormSubmit') {
-      ScriptApp.deleteTrigger(triggers[i]);
+    var t = triggers[i];
+    if (
+      t.getHandlerFunction() === 'onFormSubmit' &&
+      t.getTriggerSourceId() === formId
+    ) {
+      ScriptApp.deleteTrigger(t);
     }
   }
 }
@@ -212,10 +220,14 @@ function onFormSubmit(e) {
  * Check the execution log + your Supabase `registrations` table afterwards.
  */
 function testOnFormSubmit() {
+  // Fixed email is the shared test key across all four scripts. Running
+  // this + a waiver-side testOnFormSubmit in the same tournament produces a
+  // fully-waitlisted "測試球員" that admin can then confirm to full active.
+  // To reset the test lane between runs, delete this row from Supabase.
   var fakeEvent = {
     namedValues: {
       '姓名':   ['測試球員'],
-      'Email':  ['test+' + Date.now() + '@example.com'],
+      'Email':  ['test-player@example.com'],
       '電話':   ['0900000000'],
       '生日':   ['1990/06/15'],
       '性別':   ['女'],
@@ -226,7 +238,7 @@ function testOnFormSubmit() {
     }
   };
   onFormSubmit(fakeEvent);
-  Logger.log('testOnFormSubmit done — check Supabase `registrations` table.');
+  Logger.log('testOnFormSubmit done — check Supabase `registrations` table (email=test-player@example.com).');
 }
 
 function logError_(payload, message) {

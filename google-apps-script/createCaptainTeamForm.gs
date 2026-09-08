@@ -104,7 +104,7 @@ function createCaptainTeamForm() {
       .setRequired(true);
 
   // ── Trigger + linked sheet ──
-  removeExistingFormTriggers_();
+  removeExistingFormTriggers_(form);
   ScriptApp.newTrigger('onFormSubmit')
     .forForm(form)
     .onFormSubmit()
@@ -121,11 +121,19 @@ function createCaptainTeamForm() {
   Logger.log('Sheet URL:  ' + ss.getUrl());
 }
 
-function removeExistingFormTriggers_() {
+function removeExistingFormTriggers_(form) {
+  // Only remove onFormSubmit triggers pointing at THIS form. Wiping every
+  // form-submit trigger in the project would break sibling scripts that also
+  // POST to the webhook (e.g. the waiver form). form.getId() must match.
+  var formId = form.getId();
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'onFormSubmit') {
-      ScriptApp.deleteTrigger(triggers[i]);
+    var t = triggers[i];
+    if (
+      t.getHandlerFunction() === 'onFormSubmit' &&
+      t.getTriggerSourceId() === formId
+    ) {
+      ScriptApp.deleteTrigger(t);
     }
   }
 }
