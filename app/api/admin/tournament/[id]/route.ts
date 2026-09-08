@@ -19,6 +19,8 @@ const Body = z.object({
   num_courts: z.number().int().min(1).max(8).optional(),
   match_duration_min: z.number().int().min(10).max(180).optional(),
   group_stage_time_limit_min: z.number().int().nullable().optional(),
+  max_active_participants: z.number().int().min(8).max(200).optional(),
+  max_non_taiwanese: z.number().int().min(0).max(200).optional(),
   rules_doc_url: z.string().url().nullable().optional().or(z.literal("")),
   registration_form_url: z
     .string()
@@ -49,6 +51,30 @@ export async function PATCH(
   }
   const { id } = await params;
   const body = Body.parse(await req.json());
+  // Cross-field: non-TW sub-cap can never exceed total cap. Read current
+  // values for whichever half of the pair the caller didn't send so a PATCH
+  // that changes only one is still validated against the other's live value.
+  if (
+    body.max_active_participants !== undefined ||
+    body.max_non_taiwanese !== undefined
+  ) {
+    const db = supabaseAdmin();
+    const { data: current } = await db
+      .from("tournaments")
+      .select("max_active_participants, max_non_taiwanese")
+      .eq("id", id)
+      .maybeSingle();
+    const nextActive =
+      body.max_active_participants ?? current?.max_active_participants ?? 80;
+    const nextNonTw =
+      body.max_non_taiwanese ?? current?.max_non_taiwanese ?? 10;
+    if (nextNonTw > nextActive) {
+      return NextResponse.json(
+        { error: "非台灣配額不能超過總人數上限" },
+        { status: 400 },
+      );
+    }
+  }
   const { error } = await supabaseAdmin()
     .from("tournaments")
     .update(body)

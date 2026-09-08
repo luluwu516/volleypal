@@ -90,13 +90,20 @@ export async function POST(req: Request) {
     | "mbti_together"
     | "mbti_mixed";
 
+  // Only admin-confirmed active players enter team generation. Waitlisted
+  // rows (both forms in but payment unverified) never touch team_members —
+  // they'd contaminate the balance and be visible on /teams post-publish.
   const { data: regs, error: regErr } = await db
     .from("registrations")
     .select("*")
-    .eq("tournament_id", tournamentId);
+    .eq("tournament_id", tournamentId)
+    .eq("is_active", true);
   if (regErr) throw regErr;
   if (!regs || regs.length === 0) {
-    return NextResponse.json({ error: "尚未有報名資料" }, { status: 400 });
+    return NextResponse.json(
+      { error: "尚未有已確認的報名資料" },
+      { status: 400 },
+    );
   }
 
   const players: Player[] = regs.map((r) => ({
@@ -113,7 +120,7 @@ export async function POST(req: Request) {
 
   if (players.length < 8) {
     return NextResponse.json(
-      { error: `報名人數需 >= 8 (目前 ${players.length})` },
+      { error: `已確認球員需 >= 8 (目前 ${players.length})` },
       { status: 400 },
     );
   }
