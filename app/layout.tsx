@@ -83,7 +83,15 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-dvh antialiased dark`}
     >
-      <body className="min-h-dvh flex flex-col bg-background text-foreground">
+      <body
+        // Grammarly / LanguageTool / other page-modifying extensions inject
+        // attributes into <body> before React hydrates, causing a spurious
+        // "attributes didn't match" warning. suppressHydrationWarning
+        // silences ONE level (body itself) — doesn't affect real mismatches
+        // deeper in the tree.
+        suppressHydrationWarning
+        className="min-h-dvh flex flex-col bg-background text-foreground"
+      >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <AnnouncementsProvider initial={initialAnnouncements}>
             <main

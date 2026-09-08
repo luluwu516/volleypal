@@ -16,7 +16,10 @@ function fmtDiff(ms: number): string {
 
 export function RosterCountdown({ publishIso }: { publishIso: string }) {
   const target = new Date(publishIso).getTime();
-  const [diff, setDiff] = useState(() => target - Date.now());
+  // `null` on the server render — Date.now() would differ between the SSR
+  // pass and hydration and every refresh would log a hydration warning.
+  // First client tick populates the real diff.
+  const [diff, setDiff] = useState<number | null>(null);
 
   useEffect(() => {
     const tick = () => setDiff(target - Date.now());
@@ -25,6 +28,18 @@ export function RosterCountdown({ publishIso }: { publishIso: string }) {
     return () => clearInterval(id);
   }, [target]);
 
+  if (diff === null) {
+    // Reserve the space so the surrounding layout doesn't jump when the
+    // real countdown swaps in. 8 tabular chars ≈ same width as HH:MM:SS.
+    return (
+      <span
+        className="tabular-nums font-mono text-amber-300 text-lg opacity-0"
+        aria-hidden
+      >
+        00:00:00
+      </span>
+    );
+  }
   if (diff <= 0) {
     return (
       <span className="text-emerald-400 font-medium">

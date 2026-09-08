@@ -19,9 +19,18 @@ import { NextResponse, type NextRequest } from "next/server";
 const CSP_EXCLUDE_PATH = /^\/(_next\/static|_next\/image|favicon|icon|apple-touch-icon|logo|manifest|sw\.js|offline)/;
 
 function buildCsp(nonce: string): string {
+  // Dev only: React uses eval() to reconstruct callstacks for dev-mode error
+  // overlays and debugging. Prod builds don't use eval and this stays out.
+  const isDev = process.env.NODE_ENV !== "production";
+  const scriptSrc = [
+    "'self'",
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
+    ...(isDev ? ["'unsafe-eval'"] : []),
+  ].join(" ");
   return [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src ${scriptSrc}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self' data:`,
