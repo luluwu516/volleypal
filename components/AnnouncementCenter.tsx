@@ -28,9 +28,11 @@ export function AnnouncementCenter() {
     <>
       {banners.length > 0 && (
         <div
-          className="fixed inset-x-0 z-40 pointer-events-none"
+          className="fixed inset-x-0 z-30 pointer-events-none"
           style={{
-            top: "env(safe-area-inset-top)",
+            // Banners live BELOW the sticky AppHeader (48px + safe-area).
+            // z-30 keeps them under the header (z-40) but above content.
+            top: "calc(env(safe-area-inset-top) + 3rem)",
             paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
             paddingRight: "max(0.5rem, env(safe-area-inset-right))",
             paddingTop: "0.5rem",

@@ -6,7 +6,6 @@ import {
   listTeams,
 } from "@/lib/db/repository";
 import { AdminScoreboard } from "./_components/AdminScoreboard";
-import { BackLink } from "@/components/nav/BackLink";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +25,7 @@ export default async function ScoreEditPage({ params }: Props) {
     listMatchSets([matchId]),
   ]);
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <BackLink href="/admin/score" label="挑場比賽" />
+    <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold">計分</h1>
       <AdminScoreboard
         match={match}

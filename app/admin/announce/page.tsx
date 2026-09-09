@@ -4,7 +4,6 @@ import {
 } from "@/lib/db/repository";
 import { AnnounceForm } from "./_components/AnnounceForm";
 import { AnnouncementList } from "./_components/AnnouncementList";
-import { BackLink } from "@/components/nav/BackLink";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { getAdminSession } from "@/lib/auth/getSession";
@@ -16,8 +15,7 @@ export default async function AnnouncePage() {
   const sess = await getAdminSession();
   if (!tournament) {
     return (
-      <div className="flex flex-col gap-4 pt-2">
-        <BackLink />
+      <div className="flex flex-col gap-4">
         <h1 className="text-xl font-bold">廣播</h1>
         <EmptyState
           glyph="🗂"
@@ -31,8 +29,7 @@ export default async function AnnouncePage() {
   const locked = Boolean(sess.locked);
   const announcements = await listAnnouncements(tournament.id);
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <BackLink />
+    <div className="flex flex-col gap-4">
       {locked && <LockedBanner />}
       <h1 className="text-xl font-bold">廣播</h1>
       <AnnounceForm tournamentId={tournament.id} disabled={locked} />

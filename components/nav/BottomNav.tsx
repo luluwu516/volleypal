@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Trophy, Tv, Settings, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/NotificationBell";
 
 const LIVE_POLL_MS = 15_000;
 
@@ -78,7 +77,7 @@ export function BottomNav({
       }
     : ADMIN_TAB;
   const tabs = isAdmin ? [...TABS, adminTab] : TABS;
-  const slotCount = tabs.length + 1;
+  const slotCount = tabs.length;
   return (
     <nav
       className="fixed bottom-0 inset-x-0 z-50 border-t border-border/40 bg-background/60 backdrop-blur-md backdrop-saturate-150"
@@ -119,9 +118,6 @@ export function BottomNav({
             </li>
           );
         })}
-        <li className="flex">
-          <NotificationBell />
-        </li>
       </ul>
     </nav>
   );

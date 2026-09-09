@@ -10,7 +10,6 @@ import { ActiveRosterHeader } from "./_components/ActiveRosterHeader";
 import { RegistrationTabs } from "./_components/RegistrationTabs";
 import { PendingWaiverList } from "./_components/PendingWaiverList";
 import { TeamsBoard } from "./_components/TeamsBoard";
-import { BackLink } from "@/components/nav/BackLink";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -26,8 +25,7 @@ export default async function TeamsPage() {
   const sess = await getAdminSession();
   if (!tournament) {
     return (
-      <div className="flex flex-col gap-4 pt-2">
-        <BackLink />
+      <div className="flex flex-col gap-4">
         <h1 className="text-xl font-bold">分隊</h1>
         <EmptyState
           glyph="🗂"
@@ -72,8 +70,7 @@ export default async function TeamsPage() {
     STRATEGY_LABEL[tournament.grouping_strategy] ?? tournament.grouping_strategy;
 
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <BackLink />
+    <div className="flex flex-col gap-4">
       {locked && <LockedBanner />}
       <header>
         <h1 className="text-xl font-bold">分隊</h1>

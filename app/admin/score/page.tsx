@@ -5,7 +5,6 @@ import {
   listTeams,
 } from "@/lib/db/repository";
 import { Badge } from "@/components/ui/badge";
-import { BackLink } from "@/components/nav/BackLink";
 import { EmptyState } from "@/components/EmptyState";
 import { fmtDateTime } from "@/lib/formatTime";
 
@@ -15,8 +14,7 @@ export default async function ScoreListPage() {
   const tournament = await getCurrentTournament();
   if (!tournament) {
     return (
-      <div className="flex flex-col gap-4 pt-2">
-        <BackLink />
+      <div className="flex flex-col gap-4">
         <h1 className="text-xl font-bold">挑場比賽</h1>
         <EmptyState
           glyph="🗂"
@@ -34,8 +32,7 @@ export default async function ScoreListPage() {
   const name = (id: string | null, src: string | null) =>
     id ? teams.find((t) => t.id === id)?.name ?? id.slice(0, 6) : src ?? "TBD";
   return (
-    <div className="flex flex-col gap-3 pt-2">
-      <BackLink />
+    <div className="flex flex-col gap-3">
       <h1 className="text-xl font-bold">挑場比賽</h1>
       {matches.length === 0 && (
         <EmptyState

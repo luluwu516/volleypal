@@ -40,13 +40,16 @@ export function NotificationBell() {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="relative flex-1 flex items-center justify-center py-4 text-muted-foreground hover:text-foreground transition-colors"
+          // Compact icon-button sized for the header slot. 44pt-ish tap
+          // target (min-w-10 min-h-10) keeps it usable on mobile without
+          // fighting the header's 48px overall height.
+          className="relative grid place-items-center min-w-10 min-h-10 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 transition-colors"
           aria-label={
             unreadCount > 0 ? `PSA，${unreadCount} 則未讀` : "PSA"
           }
         >
           <span className="relative">
-            <Bell className="size-6" />
+            <Bell className="size-5" />
             {unreadCount > 0 && (
               <span className="absolute -top-1.5 -right-2 min-w-[1rem] h-4 px-1 grid place-items-center text-[10px] font-bold rounded-full bg-red-500 text-white">
                 {unreadCount > 9 ? "9+" : unreadCount}

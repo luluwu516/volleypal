@@ -4,7 +4,6 @@ import {
   listTeams,
 } from "@/lib/db/repository";
 import { GenerateScheduleForm } from "./_components/GenerateScheduleForm";
-import { BackLink } from "@/components/nav/BackLink";
 import { ScheduleList } from "@/components/admin/ScheduleList";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
@@ -17,8 +16,7 @@ export default async function SchedulerPage() {
   const sess = await getAdminSession();
   if (!tournament) {
     return (
-      <div className="flex flex-col gap-4 pt-2">
-        <BackLink />
+      <div className="flex flex-col gap-4">
         <h1 className="text-xl font-bold">賽程</h1>
         <EmptyState
           glyph="🗂"
@@ -35,8 +33,7 @@ export default async function SchedulerPage() {
     listTeams(tournament.id),
   ]);
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <BackLink />
+    <div className="flex flex-col gap-4">
       {locked && <LockedBanner />}
       <h1 className="text-xl font-bold">賽程</h1>
       <p className="text-xs text-muted-foreground">

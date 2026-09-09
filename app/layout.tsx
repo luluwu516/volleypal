@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AppHeader } from "@/components/nav/AppHeader";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { Toaster } from "@/components/ui/sonner";
@@ -94,10 +95,13 @@ export default async function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <AnnouncementsProvider initial={initialAnnouncements}>
+            <AppHeader />
             <main
               className="flex-1 mx-auto w-full max-w-md"
               style={{
-                paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
+                // Header (sticky) handles safe-area-inset-top itself — main
+                // just needs a small breathing room below it.
+                paddingTop: "1rem",
                 paddingBottom: "calc(env(safe-area-inset-bottom) + 5.5rem)",
                 paddingLeft: "max(1rem, env(safe-area-inset-left))",
                 paddingRight: "max(1rem, env(safe-area-inset-right))",
@@ -108,13 +112,13 @@ export default async function RootLayout({
             <BottomNav isAdmin={isAdmin} locked={locked} lockedMatchId={lockedMatchId} />
             <AnnouncementCenter />
           </AnnouncementsProvider>
-          {/* offset shoves toasts below the iOS notch / Dynamic Island so
-              they don't fight the status bar in PWA standalone mode. */}
+          {/* offset shoves toasts below the iOS notch AND the 48px app
+              header so they don't collide with the header's blur layer. */}
           <Toaster
             richColors
             theme="dark"
             position="top-center"
-            offset={{ top: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+            offset={{ top: "calc(env(safe-area-inset-top) + 3.5rem)" }}
           />
           <RegisterServiceWorker />
         </ThemeProvider>

@@ -24,16 +24,13 @@ export default async function AdminHome() {
   const locked = Boolean(sess.locked);
 
   return (
-    <div className="flex flex-col gap-5 pt-2">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Admin</h1>
-          <p className="text-xs text-muted-foreground">
-            登入身分: {sess.adminName}
-          </p>
-        </div>
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          登入身分: {sess.adminName}
+        </p>
         <LogoutButton />
-      </header>
+      </div>
 
       {locked && <LockedBanner />}
 

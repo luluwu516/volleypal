@@ -53,8 +53,7 @@ export default async function RankingPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <h1 className="text-xl font-bold">戰績 & 賽程</h1>
+    <div className="flex flex-col gap-4">
       <Tabs defaultValue="a">
         <TabsList className="w-full">
           <TabsTrigger value="a" className="flex-1">
