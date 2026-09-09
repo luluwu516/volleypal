@@ -39,21 +39,27 @@ export function AnnouncementCenter() {
           }}
         >
           <div className="mx-auto w-full max-w-md flex flex-col gap-2">
-            {banners.map((a) => (
+            {banners.map((a) => {
+              // Player-source broadcasts get red tinting even when they land
+              // as `info` (i.e. downgraded past the global cap) so they
+              // remain visually distinct from ordinary admin bulletins.
+              const isPlayer = a.source === "player";
+              const tone = isPlayer
+                ? "bg-red-500/15 border-red-500/50 text-red-100"
+                : a.level === "warn"
+                  ? "bg-amber-500/15 border-amber-500/50 text-amber-100"
+                  : "bg-purple-500/15 border-purple-500/50 text-purple-100";
+              return (
               <div
                 key={a.id}
-                className={`pointer-events-auto rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur-md ${
-                  a.level === "warn"
-                    ? "bg-amber-500/15 border-amber-500/50 text-amber-100"
-                    : "bg-purple-500/15 border-purple-500/50 text-purple-100"
-                }`}
+                className={`pointer-events-auto rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur-md ${tone}`}
               >
                 <div className="flex items-start gap-2">
                   <Badge
-                    variant="secondary"
+                    variant={isPlayer ? "destructive" : "secondary"}
                     className="uppercase text-[10px] tracking-wider shrink-0"
                   >
-                    {a.level}
+                    {isPlayer ? "player" : a.level}
                   </Badge>
                   <p className="flex-1 leading-snug whitespace-pre-line">
                     {a.body}
@@ -68,7 +74,8 @@ export function AnnouncementCenter() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

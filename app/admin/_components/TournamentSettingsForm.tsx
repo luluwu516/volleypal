@@ -38,6 +38,9 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
   );
   const [maxActive, setMaxActive] = useState(tournament.max_active_participants);
   const [maxNonTw, setMaxNonTw] = useState(tournament.max_non_taiwanese);
+  const [allowBroadcast, setAllowBroadcast] = useState(
+    tournament.allow_player_broadcast,
+  );
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_doc_url ?? "");
   const [regUrl, setRegUrl] = useState(tournament.registration_form_url ?? "");
   const [waiverUrl, setWaiverUrl] = useState(tournament.waiver_url ?? "");
@@ -66,6 +69,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
     groupTimeLimit !== (tournament.group_stage_time_limit_min ?? 0) ||
     maxActive !== tournament.max_active_participants ||
     maxNonTw !== tournament.max_non_taiwanese ||
+    allowBroadcast !== tournament.allow_player_broadcast ||
     rulesUrl !== (tournament.rules_doc_url ?? "") ||
     regUrl !== (tournament.registration_form_url ?? "") ||
     waiverUrl !== (tournament.waiver_url ?? "") ||
@@ -96,6 +100,7 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           group_stage_time_limit_min: groupTimeLimit || null,
           max_active_participants: maxActive,
           max_non_taiwanese: maxNonTw,
+          allow_player_broadcast: allowBroadcast,
           rules_doc_url: rulesUrl || null,
           registration_form_url: regUrl || null,
           waiver_url: waiverUrl || null,
@@ -248,6 +253,29 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="border-t border-border/40 pt-2">
+          <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
+            緊急廣播
+          </p>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowBroadcast}
+              onChange={(e) => setAllowBroadcast(e.target.checked)}
+              className="size-5 mt-0.5 rounded border-input accent-emerald-500 shrink-0"
+            />
+            <span className="flex-1">
+              <span className="text-sm font-medium">
+                開放球員緊急廣播
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                球員可從 App 底部 🚨 送出「缺器材 / 有人受傷」廣播。關閉後
+                新的廣播被擋,已發出的廣播照原本流程過期或手動刪除。
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="border-t border-border/40 pt-2">

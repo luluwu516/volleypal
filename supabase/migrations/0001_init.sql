@@ -89,6 +89,11 @@ create table tournaments (
   -- admin-confirm step, not at webhook time.
   max_active_participants smallint not null default 80,
   max_non_taiwanese smallint not null default 10,
+  -- Kill switch for the player-side emergency broadcast feature. Default on;
+  -- admins can flip it off if the channel gets abused. Only blocks NEW sends
+  -- — already-published player broadcasts follow the normal announcement
+  -- lifecycle (auto-expire / admin dismiss).
+  allow_player_broadcast boolean not null default true,
 
   -- Public-facing tournament info (rendered on Home page)
   rules_doc_url text,
@@ -211,10 +216,17 @@ create table announcements (
   tournament_id uuid not null references tournaments(id) on delete cascade,
   body text not null,
   level announcement_level not null default 'info',
+  -- 'admin' = organizer-authored (default); 'player' = emergency broadcast
+  -- from the on-court player-side channel. Kept as text (not enum) so future
+  -- sources (referee, sponsor…) can slot in without a migration.
+  source text not null default 'admin',
   created_at timestamptz not null default now(),
   expires_at timestamptz
 );
 create index on announcements (tournament_id, created_at desc);
+-- Fast lookup for the player-broadcast rate limiter, which scans the last
+-- 30 min of source='player' rows on every POST.
+create index on announcements (tournament_id, source, created_at desc);
 
 -- Audit trail for scoring edits (admin attribution)
 create table score_edits (

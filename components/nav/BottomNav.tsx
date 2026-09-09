@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Trophy, Tv, Settings, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  EmergencyBroadcastButton,
+  type EmergencyBroadcastConfig,
+} from "@/components/EmergencyBroadcastButton";
 
 const LIVE_POLL_MS = 15_000;
 
@@ -36,6 +40,10 @@ export interface BottomNavProps {
   isAdmin?: boolean;
   locked?: boolean;
   lockedMatchId?: string;
+  // Present when a tournament is loaded — enables the rightmost emergency
+  // broadcast slot. Absent (null) → the slot is hidden entirely so pre-
+  // setup / setup-error states don't render a broken button.
+  emergency?: EmergencyBroadcastConfig | null;
 }
 
 const TABS = [
@@ -65,6 +73,7 @@ export function BottomNav({
   isAdmin = false,
   locked = false,
   lockedMatchId,
+  emergency = null,
 }: BottomNavProps) {
   const pathname = usePathname() || "/";
   const hasLive = useHasLiveMatch();
@@ -77,7 +86,7 @@ export function BottomNav({
       }
     : ADMIN_TAB;
   const tabs = isAdmin ? [...TABS, adminTab] : TABS;
-  const slotCount = tabs.length;
+  const slotCount = tabs.length + (emergency ? 1 : 0);
   return (
     <nav
       className="fixed bottom-0 inset-x-0 z-50 border-t border-border/40 bg-background/60 backdrop-blur-md backdrop-saturate-150"
@@ -118,6 +127,11 @@ export function BottomNav({
             </li>
           );
         })}
+        {emergency && (
+          <li className="flex">
+            <EmergencyBroadcastButton config={emergency} />
+          </li>
+        )}
       </ul>
     </nav>
   );

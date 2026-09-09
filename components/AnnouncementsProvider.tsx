@@ -13,7 +13,11 @@ import type { Announcement } from "@/lib/db/types";
 
 const STORAGE_KEY = "volleypal-dismissed-announcements";
 const STORAGE_EVENT = "volleypal:dismissed-changed";
-const POLL_MS = 30_000;
+// 5s poll. Chosen for the player-side emergency broadcast: a real incident
+// should reach the rest of the court in <10s, not the ≤30s the old cadence
+// allowed. Endpoint is two indexed lookups so the extra load stays cheap
+// (100 users × 720 req/hr ≈ 72k/hr, well within Vercel Hobby).
+const POLL_MS = 5_000;
 const EMPTY_DISMISSED = new Set<string>();
 
 const subscribeNoop = () => () => {};

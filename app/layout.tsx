@@ -70,10 +70,20 @@ export default async function RootLayout({
     // Session cookie not configured yet — keep nav as public
   }
   let initialAnnouncements: Announcement[] = [];
+  let emergencyConfig: {
+    tournamentId: string;
+    numCourts: number;
+    allowed: boolean;
+  } | null = null;
   try {
     const tournament = await getCurrentTournament();
     if (tournament) {
       initialAnnouncements = await listAnnouncements(tournament.id);
+      emergencyConfig = {
+        tournamentId: tournament.id,
+        numCourts: tournament.num_courts,
+        allowed: tournament.allow_player_broadcast,
+      };
     }
   } catch {
     // DB unavailable — banner will hydrate from /api/announcements poll
@@ -109,7 +119,12 @@ export default async function RootLayout({
             >
               {children}
             </main>
-            <BottomNav isAdmin={isAdmin} locked={locked} lockedMatchId={lockedMatchId} />
+            <BottomNav
+              isAdmin={isAdmin}
+              locked={locked}
+              lockedMatchId={lockedMatchId}
+              emergency={emergencyConfig}
+            />
             <AnnouncementCenter />
           </AnnouncementsProvider>
           {/* offset shoves toasts below the iOS notch AND the 48px app

@@ -21,6 +21,7 @@ const Body = z.object({
   group_stage_time_limit_min: z.number().int().nullable().optional(),
   max_active_participants: z.number().int().min(8).max(200).optional(),
   max_non_taiwanese: z.number().int().min(0).max(200).optional(),
+  allow_player_broadcast: z.boolean().optional(),
   rules_doc_url: z.string().url().nullable().optional().or(z.literal("")),
   registration_form_url: z
     .string()

@@ -52,6 +52,7 @@ export interface Tournament {
   group_stage_time_limit_min: number | null;
   max_active_participants: number;
   max_non_taiwanese: number;
+  allow_player_broadcast: boolean;
   rules_doc_url: string | null;
   registration_form_url: string | null;
   waiver_url: string | null;
@@ -136,11 +137,14 @@ export interface MatchSet {
   updated_at: string;
 }
 
+export type AnnouncementSource = "admin" | "player";
+
 export interface Announcement {
   id: string;
   tournament_id: string;
   body: string;
   level: AnnouncementLevel;
+  source: AnnouncementSource;
   created_at: string;
   expires_at: string | null;
 }
