@@ -26,7 +26,12 @@ const Body = z.object({
   responses: z.record(z.string(), z.unknown()),
 });
 
-function pick(
+// Alias-based lookup across a Google Form response map. `.includes` on the
+// form key (case-insensitive) — cheap and forgiving of title variants, but
+// callers must keep aliases specific enough that no OTHER question title
+// contains one of them as a substring. Exported for regression tests that
+// lock the cross-field-collision bugs we've hit (see `preferredName` pick).
+export function pick(
   responses: Record<string, string[]>,
   keys: string[],
 ): string | null {
@@ -191,12 +196,15 @@ async function handleRegistration(
   const email = pick(r, ["email", "e-mail", "電子郵件", "電子信箱"]);
   const phone = pick(r, ["phone", "電話"]);
   // Preferred / nickname — optional. Legal `name` remains the waiver-match
-  // key; this is display-only. Aliases cover the common Google-Form title
-  // variants organizers reach for.
+  // key; this is display-only. Aliases are DELIBERATELY specific — the
+  // bare word "preferred" is out because pick() uses substring `.includes`
+  // and a form titled 「場上偏好位置 (Preferred Position)」 would otherwise
+  // hijack this field with a position answer when the nickname question
+  // was left blank (real prod bug: nicknames came back as
+  // "千萬不要讓我舉球").
   const preferredName = pick(r, [
     "preferred_name",
     "preferred name",
-    "preferred",
     "nickname",
     "暱稱",
     "常用稱呼",
