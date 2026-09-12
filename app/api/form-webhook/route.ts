@@ -59,8 +59,6 @@ function normalizeResponses(raw: Record<string, unknown>): Record<string, string
   return out;
 }
 
-const GENDERS = ["male", "female", "other"];
-
 // Negation markers that flip "舉球" from a setter signal to an any signal.
 // Order matters: these are checked BEFORE the positive setter phrase so an
 // option like「千萬不要讓我舉球」or "please don't setter" resolves to `any`
@@ -83,12 +81,21 @@ function normalizePosition(raw: string | null): string {
   return "any";
 }
 
-function normalizeGender(raw: string | null): string | null {
+/**
+ * Chinese markers are unambiguous (女 ⊄ 男, 男 ⊄ 女) and checked first.
+ * English needs "female" BEFORE "male" because "female".includes("male") is
+ * true — the earlier `for (g of ["male","female","other"])` loop caught every
+ * female answer as male, e.g. "生理女 (Female)" → "male". Verified as the
+ * root cause of the whole roster landing as male after form redesign.
+ */
+export function normalizeGender(raw: string | null): string | null {
   if (!raw) return null;
   const lower = raw.toLowerCase();
-  for (const g of GENDERS) if (lower.includes(g)) return g;
-  if (lower.includes("男")) return "male";
   if (lower.includes("女")) return "female";
+  if (lower.includes("男")) return "male";
+  if (lower.includes("female")) return "female";
+  if (lower.includes("male")) return "male";
+  if (lower.includes("other")) return "other";
   return "other";
 }
 
