@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatInTimeZone } from "date-fns-tz";
 import type { PendingWaiver, Registration } from "@/lib/db/types";
-import { displayName } from "@/lib/format/name";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -182,7 +181,12 @@ function PendingRow({
               <ul className="flex flex-col">
                 {candidates.map((c) => {
                   const preferred = c.preferred_name?.trim();
-                  const showLegal = preferred && preferred !== c.name;
+                  const showPreferred = preferred && preferred !== c.name;
+                  // Legal `name` is the string players sign onto the waiver,
+                  // so it's what admin visually cross-checks here. Preferred
+                  // name (nickname) is only shown as a secondary annotation
+                  // to help admin recognise the same person by their
+                  // day-to-day handle.
                   return (
                     <li key={c.id}>
                       <button
@@ -192,10 +196,10 @@ function PendingRow({
                         className="w-full text-left rounded px-2 py-1.5 hover:bg-white/5 disabled:opacity-50"
                       >
                         <p className="text-sm font-medium truncate">
-                          {displayName(c)}
-                          {showLegal && (
+                          {c.name}
+                          {showPreferred && (
                             <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                              ({c.name})
+                              · {preferred}
                             </span>
                           )}
                         </p>
