@@ -33,6 +33,26 @@ const TEAM_COLORS = [
 ];
 
 export async function POST(req: Request) {
+  // Wrap the whole handler so any thrown DB error / zod parse fault comes
+  // back as a JSON response the client can actually read. Without this the
+  // caller sees a truncated body and only reports "Unexpected end of JSON
+  // input" — useless for diagnosing the real cause.
+  try {
+    return await handleGenerate(req);
+  } catch (e) {
+    const detail =
+      e instanceof Error
+        ? { message: e.message, stack: e.stack }
+        : { message: String(e) };
+    console.error("teams/generate failed", detail);
+    return NextResponse.json(
+      { error: `分隊失敗:${detail.message}` },
+      { status: 500 },
+    );
+  }
+}
+
+async function handleGenerate(req: Request) {
   const sess = await getAdminSession();
   if (!sess.adminId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -175,8 +195,16 @@ export async function POST(req: Request) {
   }));
 
   // Wipe existing teams + matches for this tournament. Cascades drop members + sets.
-  await db.from("matches").delete().eq("tournament_id", tournamentId);
-  await db.from("teams").delete().eq("tournament_id", tournamentId);
+  const { error: delMatchesErr } = await db
+    .from("matches")
+    .delete()
+    .eq("tournament_id", tournamentId);
+  if (delMatchesErr) throw new Error(`delete matches: ${delMatchesErr.message}`);
+  const { error: delTeamsErr } = await db
+    .from("teams")
+    .delete()
+    .eq("tournament_id", tournamentId);
+  if (delTeamsErr) throw new Error(`delete teams: ${delTeamsErr.message}`);
 
   for (let i = 0; i < teamRows.length; i++) {
     const t = teamRows[i];
