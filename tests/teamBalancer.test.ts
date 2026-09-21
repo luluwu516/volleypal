@@ -130,6 +130,40 @@ describe("buildTeamsForStrategy (zodiac_together)", () => {
   });
 });
 
+describe("buildMixedTeams (invariants)", () => {
+  it("never places the same player in two teams (regression: swap-loop stale pa)", () => {
+    // A single-attribute cluster forces the swap loop to consider many
+    // same-attribute pairs. Before the `break` fix, a swap replacing
+    // teams[i][a] left `pa` stale — the next iteration of `b` in the same
+    // `a` block wrote `pa` into teams[j] a second time, duplicating the
+    // registration across teams and later blowing up the team_members PK.
+    const players: Player[] = [];
+    for (let k = 0; k < 64; k++) {
+      players.push(
+        makePlayer(String(k + 1), "1990-06-15", {
+          gender: k % 2 === 0 ? "male" : "female",
+          position: k % 3 === 0 ? "setter" : "any",
+          skill: (k % 5) + 1,
+        }),
+      );
+    }
+    const teams = buildMixedTeams(players, ELEMENTS, (p) =>
+      elementFromBirthday(p.birthday),
+    );
+    const seen = new Map<string, number>();
+    for (let i = 0; i < teams.length; i++) {
+      for (const p of teams[i].members) {
+        const prev = seen.get(p.id);
+        expect(prev, `player ${p.id} appears in teams ${prev} and ${i}`).toBe(
+          undefined,
+        );
+        seen.set(p.id, i);
+      }
+    }
+    expect(seen.size).toBe(players.length);
+  });
+});
+
 describe("buildMixedTeams (zodiac_mixed)", () => {
   it("spreads elements across all teams and preserves player count", () => {
     const players: Player[] = [];

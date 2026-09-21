@@ -265,6 +265,16 @@ export function buildMixedTeams<A extends string>(
 
   // Swap-optimization: for each pair of same-attribute players in different
   // teams, swap if it reduces total imbalance. Repeat until no gains or cap.
+  //
+  // We MUST `break` the inner `b` loop after a successful swap: `pa` was
+  // captured at the top of the `for a` iteration, but the swap replaces
+  // teams[i][a] with `pb`. Continuing the `b` loop keeps using the stale
+  // `pa` (now no longer at teams[i][a]) — a second swap would then write
+  // `pa` into teams[j] a SECOND time (because teams[j] already holds the
+  // real pa from the first swap), producing a duplicate registration in
+  // one team. Downstream insert into team_members then bombs on the
+  // `(team_id, registration_id)` PK. The outer while-improved loop still
+  // finds the missed swaps on the next pass.
   const maxIter = options?.maxSwapIterations ?? 40;
   for (let iter = 0; iter < maxIter; iter++) {
     let improved = false;
@@ -286,6 +296,7 @@ export function buildMixedTeams<A extends string>(
               teams[i] = swappedI;
               teams[j] = swappedJ;
               improved = true;
+              break;
             }
           }
         }
