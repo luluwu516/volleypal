@@ -340,15 +340,37 @@ export function validatePlayersFor(
   return { ok: true };
 }
 
+/**
+ * Fisher–Yates shuffle. Pure — returns a new array. Every downstream
+ * bucketer / balancer iterates in insertion order for tie-breaking, so
+ * shuffling the input is enough to make regenerations produce different
+ * teams for the same roster (previously the whole pipeline was
+ * deterministic and admin got the exact same 8 teams every re-run).
+ */
+function shufflePlayers(players: Player[], random: () => number): Player[] {
+  const out = [...players];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+export interface StrategyOptions extends BalanceOptions {
+  /** Deterministic RNG hook for tests. Defaults to Math.random. */
+  random?: () => number;
+}
+
 export function buildTeamsForStrategy(
   strategy: GroupingStrategy,
   players: Player[],
-  options?: BalanceOptions,
+  options?: StrategyOptions,
 ): BuildResult {
+  const shuffled = shufflePlayers(players, options?.random ?? Math.random);
   switch (strategy) {
     case "zodiac_together": {
       const teams = buildTogetherTeams<Element>(
-        players,
+        shuffled,
         ELEMENTS,
         (p) => elementFromBirthday(p.birthday),
         (a) => ELEMENT_LABELS_ZH[a],
@@ -358,7 +380,7 @@ export function buildTeamsForStrategy(
     }
     case "zodiac_mixed": {
       const teams = buildMixedTeams<Element>(
-        players,
+        shuffled,
         ELEMENTS,
         (p) => elementFromBirthday(p.birthday),
       );
@@ -366,7 +388,7 @@ export function buildTeamsForStrategy(
     }
     case "mbti_together": {
       const teams = buildTogetherTeams<Temperament>(
-        players,
+        shuffled,
         TEMPERAMENTS,
         (p) => MBTI_TO_TEMPERAMENT[p.mbti!],
         (a) => TEMPERAMENT_LABELS_ZH[a],
@@ -376,7 +398,7 @@ export function buildTeamsForStrategy(
     }
     case "mbti_mixed": {
       const teams = buildMixedTeams<Temperament>(
-        players,
+        shuffled,
         TEMPERAMENTS,
         (p) => MBTI_TO_TEMPERAMENT[p.mbti!],
       );

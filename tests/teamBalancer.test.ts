@@ -210,6 +210,70 @@ describe("buildTeamsForStrategy invariants (all strategies, N sweep)", () => {
   });
 });
 
+describe("buildTeamsForStrategy is randomised (regenerate ≠ same teams)", () => {
+  // Mulberry32 seeded PRNG so the assertion is deterministic even though
+  // production uses Math.random. Two different seeds → the same roster
+  // must produce different team assignments; if the whole pipeline ever
+  // slips back into determinism-by-seed, this catches it.
+  function mulberry32(seed: number): () => number {
+    let a = seed;
+    return () => {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function assignmentKey(teams: Array<{ members: Player[] }>): string {
+    // Sort within each team, sort teams themselves — so we detect actual
+    // different assignments, not just different team indexes.
+    return teams
+      .map((t) => [...t.members.map((m) => m.id)].sort().join(","))
+      .sort()
+      .join("|");
+  }
+
+  const players: Player[] = Array.from({ length: 64 }, (_, k) =>
+    makePlayer(String(k + 1), `1990-${String((k % 12) + 1).padStart(2, "0")}-${String((k % 27) + 1).padStart(2, "0")}`, {
+      gender: k % 2 === 0 ? "male" : "female",
+      position: k % 4 === 0 ? "setter" : "any",
+      skill: (k % 5) + 1,
+    }),
+  );
+
+  it("zodiac_mixed: two calls with different seeds produce different assignments", () => {
+    const r1 = buildTeamsForStrategy("zodiac_mixed", players, {
+      random: mulberry32(1),
+    });
+    const r2 = buildTeamsForStrategy("zodiac_mixed", players, {
+      random: mulberry32(2),
+    });
+    expect(assignmentKey(r1.teams)).not.toBe(assignmentKey(r2.teams));
+  });
+
+  it("zodiac_together: two calls with different seeds produce different assignments", () => {
+    const r1 = buildTeamsForStrategy("zodiac_together", players, {
+      random: mulberry32(1),
+    });
+    const r2 = buildTeamsForStrategy("zodiac_together", players, {
+      random: mulberry32(2),
+    });
+    expect(assignmentKey(r1.teams)).not.toBe(assignmentKey(r2.teams));
+  });
+
+  it("same seed → same assignment (reproducibility for tests)", () => {
+    const r1 = buildTeamsForStrategy("zodiac_mixed", players, {
+      random: mulberry32(42),
+    });
+    const r2 = buildTeamsForStrategy("zodiac_mixed", players, {
+      random: mulberry32(42),
+    });
+    expect(assignmentKey(r1.teams)).toBe(assignmentKey(r2.teams));
+  });
+});
+
 describe("buildMixedTeams (invariants)", () => {
   it("never places the same player in two teams (regression: swap-loop stale pa)", () => {
     // A single-attribute cluster forces the swap loop to consider many
