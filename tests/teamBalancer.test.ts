@@ -130,6 +130,86 @@ describe("buildTeamsForStrategy (zodiac_together)", () => {
   });
 });
 
+describe("buildTeamsForStrategy invariants (all strategies, N sweep)", () => {
+  // Every N × strategy combo we might see in a real tournament. Volleyball
+  // needs ≥ 6 per team → with 8 teams the floor is 48, so smaller Ns are
+  // omitted. Includes uneven splits (65, 77) and the roster cap (80).
+  const SIZES = [24, 32, 40, 48, 56, 64, 65, 72, 77, 80];
+  const MBTIS: MbtiTypeCode[] = Object.keys(MBTI_TO_TEMPERAMENT) as MbtiTypeCode[];
+
+  function mkPlayer(k: number, useMbti: boolean): Player {
+    // Cycle through the year so all four zodiac elements appear when N ≥ 4.
+    const month = (k % 12) + 1;
+    const day = (k % 27) + 1;
+    const iso = `1990-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return makePlayer(String(k + 1), iso, {
+      gender: k % 3 === 0 ? "female" : k % 3 === 1 ? "male" : "other",
+      position: k % 4 === 0 ? "setter" : "any",
+      skill: (k % 5) + 1,
+      mbti: useMbti ? MBTIS[k % MBTIS.length] : undefined,
+    });
+  }
+
+  function assertInvariants(
+    label: string,
+    teams: Array<{ members: Player[] }>,
+    players: Player[],
+  ) {
+    const seen = new Map<string, number>();
+    let total = 0;
+    for (let i = 0; i < teams.length; i++) {
+      for (const p of teams[i].members) {
+        total++;
+        const prev = seen.get(p.id);
+        expect(
+          prev,
+          `${label}: player ${p.id} in team ${prev} and ${i}`,
+        ).toBe(undefined);
+        seen.set(p.id, i);
+      }
+    }
+    expect(total, `${label}: total members`).toBe(players.length);
+    expect(seen.size, `${label}: unique member count`).toBe(players.length);
+  }
+
+  for (const n of SIZES) {
+    for (const strategy of [
+      "zodiac_mixed",
+      "mbti_mixed",
+      "zodiac_together",
+      "mbti_together",
+    ] as const) {
+      it(`${strategy} @ N=${n}: no dupes, no losses`, () => {
+        const useMbti = strategy.startsWith("mbti_");
+        const players = Array.from({ length: n }, (_, k) => mkPlayer(k, useMbti));
+        const result = buildTeamsForStrategy(strategy, players);
+        assertInvariants(`${strategy}/N=${n}`, result.teams, players);
+      });
+    }
+  }
+
+  it("mixed strategy handles a single-element cluster (worst case for swap loop)", () => {
+    // All 64 players share one zodiac sign → one bucket has everyone, the
+    // swap loop sees every pair. Historic regression case.
+    const players = Array.from({ length: 64 }, (_, k) =>
+      makePlayer(String(k + 1), "1990-06-15", {
+        gender: k % 2 === 0 ? "female" : "male",
+        position: k % 3 === 0 ? "setter" : "any",
+        skill: (k % 5) + 1,
+      }),
+    );
+    const teams = buildMixedTeams(players, ELEMENTS, (p) =>
+      elementFromBirthday(p.birthday),
+    );
+    const seen = new Set<string>();
+    for (const t of teams) for (const p of t.members) {
+      expect(seen.has(p.id), `dup ${p.id}`).toBe(false);
+      seen.add(p.id);
+    }
+    expect(seen.size).toBe(players.length);
+  });
+});
+
 describe("buildMixedTeams (invariants)", () => {
   it("never places the same player in two teams (regression: swap-loop stale pa)", () => {
     // A single-attribute cluster forces the swap loop to consider many

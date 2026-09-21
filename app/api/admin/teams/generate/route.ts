@@ -192,6 +192,29 @@ async function handleGenerate(req: Request) {
 
   const result = buildTeamsForStrategy(strategy, players);
 
+  // Pre-insert invariant check. Cheap to run and turns any future balancer
+  // regression into a specific, actionable error instead of a downstream
+  // PK-violation mystery ("(team_id, registration_id) already exists").
+  const seen = new Map<string, number>();
+  let assigned = 0;
+  for (let i = 0; i < result.teams.length; i++) {
+    for (const p of result.teams[i].members) {
+      assigned++;
+      const prev = seen.get(p.id);
+      if (prev !== undefined) {
+        throw new Error(
+          `balancer produced duplicate: player ${p.name} (${p.id}) appears in teams ${prev + 1} and ${i + 1}`,
+        );
+      }
+      seen.set(p.id, i);
+    }
+  }
+  if (assigned !== players.length) {
+    throw new Error(
+      `balancer lost players: ${players.length} in, ${assigned} out (${players.length - assigned} missing)`,
+    );
+  }
+
   // All strategies emit generic 「隊伍 1..N」 names + a rotating MIXED palette,
   // regardless of internal grouping (火象/水象 or NF/NT/…). Rationale: teams
   // are provisioned before match day and the schedule leaks team NAMES to
