@@ -40,13 +40,32 @@ export async function POST(req: Request) {
   try {
     return await handleGenerate(req);
   } catch (e) {
-    const detail =
-      e instanceof Error
-        ? { message: e.message, stack: e.stack }
-        : { message: String(e) };
-    console.error("teams/generate failed", detail);
+    // Supabase PostgrestError isn't an Error instance — it's a plain object
+    // { message, details, hint, code }. String(e) on it yields "[object
+    // Object]", which is what leaked to the toast the first time round.
+    // Extract the relevant string bits from any of: real Error, Postgrest,
+    // string, unknown.
+    let message: string;
+    let extra: Record<string, unknown> | null = null;
+    if (e instanceof Error) {
+      message = e.message;
+    } else if (e && typeof e === "object") {
+      const obj = e as Record<string, unknown>;
+      message =
+        typeof obj.message === "string" && obj.message.length > 0
+          ? obj.message
+          : JSON.stringify(obj);
+      extra = {
+        code: obj.code,
+        hint: obj.hint,
+        details: obj.details,
+      };
+    } else {
+      message = String(e);
+    }
+    console.error("teams/generate failed", { message, extra, error: e });
     return NextResponse.json(
-      { error: `分隊失敗:${detail.message}` },
+      { error: `分隊失敗:${message}`, ...(extra ? { extra } : {}) },
       { status: 500 },
     );
   }
@@ -118,7 +137,7 @@ async function handleGenerate(req: Request) {
     .select("*")
     .eq("tournament_id", tournamentId)
     .eq("is_active", true);
-  if (regErr) throw regErr;
+  if (regErr) throw new Error(`fetch registrations: ${regErr.message}`);
   if (!regs || regs.length === 0) {
     return NextResponse.json(
       { error: "尚未有已確認的報名資料" },
@@ -220,14 +239,20 @@ async function handleGenerate(req: Request) {
       })
       .select("id")
       .single();
-    if (teamErr) throw teamErr;
+    if (teamErr)
+      throw new Error(
+        `insert team ${t.name} (seed ${i + 1}): ${teamErr.message}${teamErr.details ? " · " + teamErr.details : ""}`,
+      );
     if (t.members.length > 0) {
       const memberRows = t.members.map((p) => ({
         team_id: inserted.id,
         registration_id: p.id,
       }));
       const { error: mErr } = await db.from("team_members").insert(memberRows);
-      if (mErr) throw mErr;
+      if (mErr)
+        throw new Error(
+          `insert team_members for ${t.name} (${memberRows.length} rows): ${mErr.message}${mErr.details ? " · " + mErr.details : ""}`,
+        );
     }
   }
 
