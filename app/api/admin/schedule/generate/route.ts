@@ -64,6 +64,18 @@ export async function POST(req: Request) {
     );
   }
 
+  // Placement-match toggles live on the tournament row so the choice
+  // persists across regens. Missing tournament → treat both as enabled
+  // (fall back to default schedule; the tournament itself would fail the
+  // teams query above anyway).
+  const { data: tournamentRow } = await db
+    .from("tournaments")
+    .select("skip_third_place, skip_silver_third_place")
+    .eq("id", body.tournamentId)
+    .maybeSingle();
+  const skipThirdPlace = Boolean(tournamentRow?.skip_third_place);
+  const skipSilverThirdPlace = Boolean(tournamentRow?.skip_silver_third_place);
+
   // Snake-draft seeds into groups so that:
   //   - same-element sub-teams (e.g. 土象 A / 土象 B) end up in different groups,
   //   - the two groups don't play symmetric mirror matchups
@@ -82,6 +94,8 @@ export async function POST(req: Request) {
     numCourts: body.numCourts,
     matchDurationMin: body.matchDurationMin,
     startsAt: new Date(body.startsAt),
+    skipThirdPlace,
+    skipSilverThirdPlace,
   });
 
   // Clear pending matches; preserve finished

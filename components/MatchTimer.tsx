@@ -6,7 +6,7 @@ interface Props {
   /** ISO timestamp when the match transitioned to "live". null = not started. */
   startedAt: string | null;
   /** Status of the match. */
-  status: "pending" | "live" | "finished";
+  status: "pending" | "live" | "finished" | "canceled";
   /** Minutes cap for group-stage matches. null = no limit (knockout) — shows elapsed. */
   timeLimitMin?: number | null;
 }
@@ -30,6 +30,11 @@ export function MatchTimer({ startedAt, status, timeLimitMin }: Props) {
     return () => clearInterval(id);
   }, [status]);
 
+  if (status === "canceled") {
+    return (
+      <span className="text-xs text-red-300 tabular-nums">已取消</span>
+    );
+  }
   if (status === "pending") {
     return (
       <span className="text-xs text-muted-foreground tabular-nums">

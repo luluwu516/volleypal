@@ -233,4 +233,37 @@ describe("buildFullSchedule + fillKnockoutTeams", () => {
       .map((m) => m.scheduledAt.getTime());
     expect(Math.min(...finalTimes)).toBeGreaterThan(Math.max(...semiTimes));
   });
+
+  it("skipThirdPlace omits the Gold placement match only", () => {
+    const { knockoutMatches } = buildFullSchedule({
+      ...makeInput(2),
+      skipThirdPlace: true,
+    });
+    const phases = knockoutMatches.map((m) => m.phase).sort();
+    expect(phases).not.toContain("third_place");
+    // silver placement still present
+    expect(phases).toContain("silver_third_place");
+    // final + silver_final untouched
+    expect(phases).toContain("final");
+    expect(phases).toContain("silver_final");
+  });
+
+  it("skipSilverThirdPlace omits the Silver 7-8 match only", () => {
+    const { knockoutMatches } = buildFullSchedule({
+      ...makeInput(2),
+      skipSilverThirdPlace: true,
+    });
+    const phases = knockoutMatches.map((m) => m.phase);
+    expect(phases).not.toContain("silver_third_place");
+    expect(phases).toContain("third_place");
+  });
+
+  it("both skip flags → 6 knockout matches (2 semis + 2 semis + 2 finals)", () => {
+    const { knockoutMatches } = buildFullSchedule({
+      ...makeInput(2),
+      skipThirdPlace: true,
+      skipSilverThirdPlace: true,
+    });
+    expect(knockoutMatches).toHaveLength(6);
+  });
 });

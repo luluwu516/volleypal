@@ -42,7 +42,11 @@ create type match_phase as enum (
   'semifinal', 'final', 'third_place',                -- Gold bracket
   'silver_semifinal', 'silver_final', 'silver_third_place'
 );
-create type match_status as enum ('pending', 'live', 'finished');
+-- 'canceled' = admin cut this match after generation (e.g. venue time ran
+-- short, chose to skip the placement game). Row is kept so viewers see the
+-- match was intentionally dropped, not silently missing; ranking / auto-fill
+-- ignore canceled matches the same way as "match doesn't exist".
+create type match_status as enum ('pending', 'live', 'finished', 'canceled');
 create type group_label as enum ('A', 'B');
 create type announcement_level as enum ('info', 'warn', 'urgent');
 
@@ -94,6 +98,14 @@ create table tournaments (
   -- — already-published player broadcasts follow the normal announcement
   -- lifecycle (auto-expire / admin dismiss).
   allow_player_broadcast boolean not null default true,
+  -- Placement match toggles. When true, the corresponding placement match is
+  -- omitted at schedule-generation time and the two semifinal losers are
+  -- displayed as a tied rank instead (skip_third_place → both semi losers
+  -- tied at 3rd; skip_silver_third_place → both silver-semi losers tied at
+  -- 7th). Default false — generate the full bracket, and let admins opt out
+  -- per tournament when the venue booking is tight.
+  skip_third_place boolean not null default false,
+  skip_silver_third_place boolean not null default false,
 
   -- Public-facing tournament info (rendered on Home page)
   rules_doc_url text,

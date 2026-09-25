@@ -14,6 +14,7 @@ interface CellResult {
   setsForCol: number;
   pending: boolean;
   finished: boolean;
+  canceled: boolean;
   scheduledAt: string | null;
 }
 
@@ -42,6 +43,7 @@ function findCell(
     setsForCol: rowIsA ? setsForB : setsForA,
     pending: m.status === "pending",
     finished: m.status === "finished",
+    canceled: m.status === "canceled",
     scheduledAt: m.scheduled_at,
   };
 }
@@ -120,6 +122,17 @@ export function RoundRobinMatrix({
                 const time = cell.scheduledAt
                   ? fmtTime(cell.scheduledAt)
                   : null;
+                if (cell.canceled) {
+                  return (
+                    <td
+                      key={colId}
+                      className="text-center px-1 py-1.5 tabular-nums"
+                    >
+                      <div className="text-red-300/70 line-through">—</div>
+                      <div className="text-[9px] text-red-300/70">已取消</div>
+                    </td>
+                  );
+                }
                 if (cell.pending) {
                   return (
                     <td

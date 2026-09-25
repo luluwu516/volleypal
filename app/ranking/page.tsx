@@ -8,6 +8,7 @@ import { standingsForGroup } from "@/lib/ranking-helpers";
 import { GroupStandings } from "@/components/ranking/GroupStandings";
 import { Bracket } from "@/components/ranking/Bracket";
 import { RoundRobinMatrix } from "@/components/ranking/RoundRobinMatrix";
+import { ScheduleList } from "@/components/admin/ScheduleList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const revalidate = 15;
@@ -54,8 +55,11 @@ export default async function RankingPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tabs defaultValue="a">
+      <Tabs defaultValue="schedule">
         <TabsList className="w-full">
+          <TabsTrigger value="schedule" className="flex-1">
+            賽程
+          </TabsTrigger>
           <TabsTrigger value="a" className="flex-1">
             A 組
           </TabsTrigger>
@@ -66,6 +70,9 @@ export default async function RankingPage() {
             淘汰賽
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="schedule" className="mt-4">
+          <ScheduleList matches={matches} teams={teams} />
+        </TabsContent>
         <TabsContent value="a" className="mt-4 flex flex-col gap-4">
           <GroupStandings standings={standingsA} teams={teams} />
           <section>

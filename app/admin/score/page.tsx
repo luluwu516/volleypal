@@ -25,10 +25,14 @@ export default async function ScoreListPage() {
       </div>
     );
   }
-  const [matches, teams] = await Promise.all([
+  const [allMatches, teams] = await Promise.all([
     listMatches(tournament.id),
     listTeams(tournament.id),
   ]);
+  // Canceled matches aren't scored (there's nothing to score). They stay
+  // visible on the scheduler page for context; leaving them out of the
+  // score-picker keeps this list to what admin actually needs to click.
+  const matches = allMatches.filter((m) => m.status !== "canceled");
   const name = (id: string | null, src: string | null) =>
     id ? teams.find((t) => t.id === id)?.name ?? id.slice(0, 6) : src ?? "TBD";
   return (

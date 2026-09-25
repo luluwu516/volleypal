@@ -83,7 +83,7 @@ export async function POST(
       .select("id, scheduled_at, court, referee_team_id, status")
       .eq("tournament_id", match.tournament_id)
       .in("phase", KNOCKOUT_PHASES)
-      .neq("status", "finished")
+      .eq("status", "pending") // exclude finished + canceled from the ref chain
       .order("scheduled_at", { ascending: true })
       .order("court", { ascending: true });
 

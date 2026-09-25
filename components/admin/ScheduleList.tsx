@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
 import { fmtTime } from "@/lib/formatTime";
 import { RefereePicker } from "@/components/admin/RefereePicker";
+import { CancelMatchButton } from "@/components/admin/CancelMatchButton";
+import { RestoreMatchButton } from "@/components/admin/RestoreMatchButton";
 
 function teamName(
   id: string | null,
@@ -39,7 +41,11 @@ export function ScheduleList({
       <EmptyState
         glyph="📅"
         title="尚未生成賽程"
-        body="填好上方的場地數、每場長度、起始時間,按下「生成賽程」就會自動排出小組賽 + 淘汰賽。"
+        body={
+          editable
+            ? "填好上方的場地數、每場長度、起始時間,按下「生成賽程」就會自動排出小組賽 + 淘汰賽。"
+            : "主辦還沒排定賽程,排好後這裡就會顯示每個場地的對戰時間。"
+        }
       />
     );
   }
@@ -53,11 +59,18 @@ export function ScheduleList({
     bySlot.set(key, list);
   }
   const slots = [...bySlot.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const canceledCount = matches.filter((m) => m.status === "canceled").length;
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-muted-foreground">
         共 {matches.length} 場
+        {canceledCount > 0 && (
+          <span className="text-red-300/80">
+            {" "}
+            · {canceledCount} 場已取消
+          </span>
+        )}
       </p>
       {slots.map(([slotKey, slotMatches]) => (
         <div key={slotKey}>
@@ -67,8 +80,15 @@ export function ScheduleList({
           <div className="rounded-lg border divide-y divide-border/50">
             {slotMatches
               .sort((a, b) => (a.court ?? 0) - (b.court ?? 0))
-              .map((m) => (
-                <div key={m.id} className="p-2.5 flex flex-col gap-1">
+              .map((m) => {
+                const isCanceled = m.status === "canceled";
+                return (
+                <div
+                  key={m.id}
+                  className={`p-2.5 flex flex-col gap-1 ${
+                    isCanceled ? "opacity-60" : ""
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs text-muted-foreground tabular-nums w-12 shrink-0">
@@ -78,21 +98,54 @@ export function ScheduleList({
                         {PHASE_LABEL[m.phase] ?? m.phase}
                         {m.group_label ? ` ${m.group_label}` : ""}
                       </Badge>
-                      <span className="text-sm truncate">
+                      <span
+                        className={`text-sm truncate ${
+                          isCanceled
+                            ? "line-through text-muted-foreground"
+                            : ""
+                        }`}
+                      >
                         {teamName(m.team_a_id, m.team_a_source, teams)}{" "}
                         <span className="text-muted-foreground">vs</span>{" "}
                         {teamName(m.team_b_id, m.team_b_source, teams)}
                       </span>
                     </div>
-                    {m.status !== "pending" && (
+                    {isCanceled ? (
                       <Badge
-                        variant={
-                          m.status === "live" ? "destructive" : "secondary"
-                        }
-                        className="text-[10px] shrink-0"
+                        variant="outline"
+                        className="text-[10px] shrink-0 border-red-500/50 text-red-300 bg-red-500/10"
                       >
-                        {m.status}
+                        已取消
                       </Badge>
+                    ) : (
+                      m.status !== "pending" && (
+                        <Badge
+                          variant={
+                            m.status === "live" ? "destructive" : "secondary"
+                          }
+                          className="text-[10px] shrink-0"
+                        >
+                          {m.status}
+                        </Badge>
+                      )
+                    )}
+                    {editable && m.status === "pending" && (
+                      <CancelMatchButton
+                        matchId={m.id}
+                        label={`${PHASE_LABEL[m.phase] ?? m.phase}${
+                          m.group_label ? ` ${m.group_label}` : ""
+                        }`}
+                        disabled={disabled}
+                      />
+                    )}
+                    {editable && isCanceled && (
+                      <RestoreMatchButton
+                        matchId={m.id}
+                        label={`${PHASE_LABEL[m.phase] ?? m.phase}${
+                          m.group_label ? ` ${m.group_label}` : ""
+                        }`}
+                        disabled={disabled}
+                      />
                     )}
                   </div>
                   <div className="text-[11px] text-muted-foreground pl-14 flex items-center gap-2">
@@ -114,7 +167,8 @@ export function ScheduleList({
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       ))}

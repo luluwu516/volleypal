@@ -26,7 +26,7 @@ const ROUTES: Array<{ match: (p: string) => boolean; config: HeaderConfig }> = [
   { match: (p) => p === "/", config: { kind: "app", label: "VolleyPal" } },
   {
     match: (p) => p.startsWith("/ranking"),
-    config: { kind: "title", title: "戰績 & 賽程" },
+    config: { kind: "title", title: "賽程 & 戰績" },
   },
   {
     match: (p) => p.startsWith("/live"),

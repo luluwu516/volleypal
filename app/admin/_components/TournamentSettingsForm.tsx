@@ -41,6 +41,10 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
   const [allowBroadcast, setAllowBroadcast] = useState(
     tournament.allow_player_broadcast,
   );
+  const [skipThird, setSkipThird] = useState(tournament.skip_third_place);
+  const [skipSilverThird, setSkipSilverThird] = useState(
+    tournament.skip_silver_third_place,
+  );
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_doc_url ?? "");
   const [regUrl, setRegUrl] = useState(tournament.registration_form_url ?? "");
   const [waiverUrl, setWaiverUrl] = useState(tournament.waiver_url ?? "");
@@ -70,6 +74,8 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
     maxActive !== tournament.max_active_participants ||
     maxNonTw !== tournament.max_non_taiwanese ||
     allowBroadcast !== tournament.allow_player_broadcast ||
+    skipThird !== tournament.skip_third_place ||
+    skipSilverThird !== tournament.skip_silver_third_place ||
     rulesUrl !== (tournament.rules_doc_url ?? "") ||
     regUrl !== (tournament.registration_form_url ?? "") ||
     waiverUrl !== (tournament.waiver_url ?? "") ||
@@ -101,6 +107,8 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           max_active_participants: maxActive,
           max_non_taiwanese: maxNonTw,
           allow_player_broadcast: allowBroadcast,
+          skip_third_place: skipThird,
+          skip_silver_third_place: skipSilverThird,
           rules_doc_url: rulesUrl || null,
           registration_form_url: regUrl || null,
           waiver_url: waiverUrl || null,
@@ -220,6 +228,42 @@ export function TournamentSettingsForm({ tournament, disabled = false }: Props) 
           <p className="text-xs text-muted-foreground mt-1">
             時間到當下比分高的一方獲勝。留 0 = 不限時，照正規規則打到三戰兩勝。
           </p>
+        </div>
+
+        <div className="border-t border-border/40 pt-2">
+          <p className="text-xs uppercase text-muted-foreground mb-2 tracking-wider">
+            淘汰賽名次戰
+          </p>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={skipThird}
+                onChange={(e) => setSkipThird(e.target.checked)}
+                className="size-5 mt-0.5 rounded border-input accent-emerald-500 shrink-0"
+              />
+              <span className="flex-1">
+                <span className="text-sm font-medium">不打季軍賽</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Gold 兩隊準決賽落敗方並列第 3。下次生成賽程時套用。
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={skipSilverThird}
+                onChange={(e) => setSkipSilverThird(e.target.checked)}
+                className="size-5 mt-0.5 rounded border-input accent-emerald-500 shrink-0"
+              />
+              <span className="flex-1">
+                <span className="text-sm font-medium">不打 7-8 名戰</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  Silver 兩隊準決賽落敗方並列第 7。下次生成賽程時套用。
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
 
         <div className="border-t border-border/40 pt-2">

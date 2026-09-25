@@ -83,7 +83,16 @@ async function setSlotsIfEmpty(
 async function fillSemifinalsFromStandings(db: DB, tournamentId: string) {
   const matches = await loadMatches(db, tournamentId);
   const groupMatches = matches.filter((m) => m.phase === "group");
-  if (groupMatches.some((m) => m.status !== "finished")) return; // not yet
+  // A canceled group match doesn't count toward standings (see
+  // ranking-helpers) and shouldn't block the fill either. Treat it the same
+  // way we treat a finished match here.
+  if (
+    groupMatches.some(
+      (m) => m.status !== "finished" && m.status !== "canceled",
+    )
+  ) {
+    return; // not yet
+  }
 
   const sets = (await loadSets(
     db,
@@ -148,6 +157,10 @@ async function fillFinalsFromSemis(
 
   const semis = matches.filter((m) => m.phase === semiPhase);
   if (semis.length !== 2) return;
+  // Canceled semi = no winner, so the final / placement fill is impossible
+  // for this bracket anyway. Skip silently — the row stays in whatever state
+  // the admin left it. (In practice admins only cancel placement matches.)
+  if (semis.some((m) => m.status === "canceled")) return;
   if (semis.some((m) => m.status !== "finished")) return;
 
   // identify which semi corresponds to "#1 source" so winner-of-#1 = teamA

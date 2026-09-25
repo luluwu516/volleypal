@@ -33,7 +33,7 @@ export type MatchPhase =
   | "silver_semifinal"
   | "silver_final"
   | "silver_third_place";
-export type MatchStatus = "pending" | "live" | "finished";
+export type MatchStatus = "pending" | "live" | "finished" | "canceled";
 export type GroupLabel = "A" | "B";
 export type AnnouncementLevel = "info" | "warn" | "urgent";
 
@@ -53,6 +53,8 @@ export interface Tournament {
   max_active_participants: number;
   max_non_taiwanese: number;
   allow_player_broadcast: boolean;
+  skip_third_place: boolean;
+  skip_silver_third_place: boolean;
   rules_doc_url: string | null;
   registration_form_url: string | null;
   waiver_url: string | null;

@@ -21,6 +21,10 @@ export interface SchedulerInput {
   matchDurationMin: number;
   /** ISO timestamp for the first match. */
   startsAt: Date;
+  /** Omit the Gold 3rd-place match (semi losers tied at 3rd). */
+  skipThirdPlace?: boolean;
+  /** Omit the Silver 7-8 match (silver-semi losers tied at 7th). */
+  skipSilverThirdPlace?: boolean;
 }
 
 export type Phase =
@@ -272,6 +276,7 @@ export function buildKnockoutShells(
   startsAt: Date,
   matchDurationMin: number,
   numCourts: number,
+  opts?: { skipThirdPlace?: boolean; skipSilverThirdPlace?: boolean },
 ): ScheduledMatch[] {
   type Shell = Omit<ScheduledMatch, "court" | "scheduledAt">;
 
@@ -324,15 +329,19 @@ export function buildKnockoutShells(
       teamASource: "Gold Semi 1 W",
       teamBSource: "Gold Semi 2 W",
     },
-    {
-      phase: "third_place",
-      groupLabel: null,
-      index: 0,
-      teamAId: null,
-      teamBId: null,
-      teamASource: "Gold Semi 1 L",
-      teamBSource: "Gold Semi 2 L",
-    },
+    ...(opts?.skipThirdPlace
+      ? []
+      : [
+          {
+            phase: "third_place" as const,
+            groupLabel: null,
+            index: 0,
+            teamAId: null,
+            teamBId: null,
+            teamASource: "Gold Semi 1 L",
+            teamBSource: "Gold Semi 2 L",
+          },
+        ]),
     {
       phase: "silver_final",
       groupLabel: null,
@@ -342,15 +351,19 @@ export function buildKnockoutShells(
       teamASource: "Silver Semi 1 W",
       teamBSource: "Silver Semi 2 W",
     },
-    {
-      phase: "silver_third_place",
-      groupLabel: null,
-      index: 0,
-      teamAId: null,
-      teamBId: null,
-      teamASource: "Silver Semi 1 L",
-      teamBSource: "Silver Semi 2 L",
-    },
+    ...(opts?.skipSilverThirdPlace
+      ? []
+      : [
+          {
+            phase: "silver_third_place" as const,
+            groupLabel: null,
+            index: 0,
+            teamAId: null,
+            teamBId: null,
+            teamASource: "Silver Semi 1 L",
+            teamBSource: "Silver Semi 2 L",
+          },
+        ]),
   ];
 
   const out: ScheduledMatch[] = [];
@@ -387,6 +400,10 @@ export function buildFullSchedule(input: SchedulerInput): ScheduledTournament {
     knockoutStart,
     input.matchDurationMin,
     input.numCourts,
+    {
+      skipThirdPlace: input.skipThirdPlace,
+      skipSilverThirdPlace: input.skipSilverThirdPlace,
+    },
   );
   return { groupMatches, knockoutMatches };
 }
