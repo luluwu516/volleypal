@@ -91,15 +91,10 @@ export default async function TeamsPage() {
         registrations={registrations}
       />
 
-      <RegistrationTabs registrations={registrations} disabled={locked} />
-
-      <PendingWaiverList
-        pending={pendingWaivers}
-        registrations={registrations}
-        disabled={locked}
-      />
-
-
+      {/* Teams board sits above the roster: once teams exist it's the thing
+          admin came here to look at, while the roster (64+ rows) becomes
+          reference data. Before generation the board isn't rendered at all,
+          so the roster naturally stays at the top during the confirm phase. */}
       {teams.length > 0 && (
         <section>
           <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
@@ -119,6 +114,14 @@ export default async function TeamsPage() {
           />
         </section>
       )}
+
+      <PendingWaiverList
+        pending={pendingWaivers}
+        registrations={registrations}
+        disabled={locked}
+      />
+
+      <RegistrationTabs registrations={registrations} disabled={locked} />
 
       {/* Sticks above BottomNav (≈4rem tall) plus the notched-phone safe
           area, so the button never gets hidden behind the nav on iPhones
