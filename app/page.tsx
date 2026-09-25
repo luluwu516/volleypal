@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
-import { getCurrentTournament, listTeams } from "@/lib/db/repository";
+import {
+  getCurrentTournament,
+  listTeams,
+  countActiveRegistrations,
+} from "@/lib/db/repository";
 import { Hero } from "@/components/Hero";
 import {
   Accordion,
@@ -42,6 +46,18 @@ export default async function HomePage() {
   const teamCount = tournament
     ? await safe(async () => (await listTeams(tournament.id)).length, 0)
     : 0;
+
+  // Roster-full notice on the registration link. The cap is only enforced at
+  // the admin-confirm step — the Google Form itself never closes — so a full
+  // roster means "you'll land on the waitlist", not "don't bother". Falls
+  // back to not-full on a count error so we never wrongly discourage a
+  // signup.
+  const activeCount = tournament
+    ? await safe(() => countActiveRegistrations(tournament.id), 0)
+    : 0;
+  const rosterFull = Boolean(
+    tournament && activeCount >= tournament.max_active_participants,
+  );
 
   // Roster gate: derive one of four states for the accordion body so the
   // page still fully SSRs. Countdown ticker (client component) only mounts
@@ -117,7 +133,15 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
                     報名連結
                   </span>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 text-sm text-muted-foreground">
+                <AccordionContent className="px-4 text-sm text-muted-foreground flex flex-col gap-2">
+                  {rosterFull && (
+                    <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                      ⚠ 正取名額已滿
+                      <span className="block mt-1 text-amber-100/80">
+                        現在報名將列入候補,如有人退報會依報名順序遞補。
+                      </span>
+                    </p>
+                  )}
                   {tournament.registration_form_url ? (
                     <a
                       href={tournament.registration_form_url}

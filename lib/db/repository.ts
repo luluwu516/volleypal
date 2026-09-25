@@ -84,3 +84,20 @@ export async function listRegistrations(
   if (error) throw error;
   return (data ?? []) as Registration[];
 }
+
+/**
+ * Admin-confirmed player count. head+exact so no rows cross the wire — the
+ * public Home page only needs this to decide whether the roster is full.
+ */
+export async function countActiveRegistrations(
+  tournamentId: string,
+): Promise<number> {
+  const db = supabaseAdmin();
+  const { count, error } = await db
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId)
+    .eq("is_active", true);
+  if (error) throw error;
+  return count ?? 0;
+}
