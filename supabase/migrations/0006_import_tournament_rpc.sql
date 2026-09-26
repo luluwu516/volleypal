@@ -23,7 +23,14 @@ begin
 
   -- Single-tournament app: wipe every existing tournament first. FKs cascade
   -- (see 0001) so teams / matches / registrations / announcements go with it.
-  delete from tournaments;
+  --
+  -- The seemingly-redundant WHERE is load-bearing: Supabase runs pg_safeupdate,
+  -- which rejects an unqualified DELETE with "DELETE requires a WHERE clause".
+  -- It inspects the planned statement for a real qual, so `where true` or
+  -- `where id is not null` (provably true on a NOT NULL primary key) get folded
+  -- away by the planner and still trip the guard. A semi-join against the same
+  -- table survives planning while matching every row.
+  delete from tournaments where id in (select id from tournaments);
 
   insert into tournaments
     select * from jsonb_populate_record(null::tournaments, payload->'tournament');
