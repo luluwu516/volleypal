@@ -218,15 +218,15 @@ values ('星座盃 2026', 2026, 'zodiac', 3, 30);`}
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 flex flex-col gap-3">
-                  {tournament.venue_address ? (
-                    <NavigateButton address={tournament.venue_address} />
-                  ) : null}
                   {tournament.venue_transport ? (
                     <p className="text-sm text-muted-foreground whitespace-pre-line">
                       {tournament.venue_transport}
                     </p>
                   ) : !tournament.venue_address ? (
                     <p className="text-sm text-muted-foreground">尚未提供</p>
+                  ) : null}
+                  {tournament.venue_address ? (
+                    <NavigateButton address={tournament.venue_address} />
                   ) : null}
                 </AccordionContent>
               </AccordionItem>

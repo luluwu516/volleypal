@@ -98,17 +98,6 @@ export function ScheduleList({
                         {PHASE_LABEL[m.phase] ?? m.phase}
                         {m.group_label ? ` ${m.group_label}` : ""}
                       </Badge>
-                      <span
-                        className={`text-sm truncate ${
-                          isCanceled
-                            ? "line-through text-muted-foreground"
-                            : ""
-                        }`}
-                      >
-                        {teamName(m.team_a_id, m.team_a_source, teams)}{" "}
-                        <span className="text-muted-foreground">vs</span>{" "}
-                        {teamName(m.team_b_id, m.team_b_source, teams)}
-                      </span>
                     </div>
                     {isCanceled ? (
                       <Badge
@@ -148,6 +137,21 @@ export function ScheduleList({
                       />
                     )}
                   </div>
+                  {/* Team names get their own line: names are admin- or
+                      player-chosen on match day (up to 60 chars) and sharing
+                      a line with the court / phase / status chrome left them
+                      ~150px on a 375pt phone, i.e. truncated to nothing.
+                      pl-14 (w-12 court column + gap-2) indents this and the
+                      referee line to start under the phase badge. */}
+                  <p
+                    className={`text-sm break-words pl-14 ${
+                      isCanceled ? "line-through text-muted-foreground" : ""
+                    }`}
+                  >
+                    {teamName(m.team_a_id, m.team_a_source, teams)}{" "}
+                    <span className="text-muted-foreground">vs</span>{" "}
+                    {teamName(m.team_b_id, m.team_b_source, teams)}
+                  </p>
                   <div className="text-[11px] text-muted-foreground pl-14 flex items-center gap-2">
                     <span>裁判：</span>
                     {editable ? (
