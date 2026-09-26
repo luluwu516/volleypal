@@ -127,13 +127,18 @@ export default async function RootLayout({
             />
             <AnnouncementCenter />
           </AnnouncementsProvider>
-          {/* offset shoves toasts below the iOS notch AND the 48px app
-              header so they don't collide with the header's blur layer. */}
+          {/* Shove toasts below the iOS notch AND the 48px app header so they
+              don't collide with the header's blur layer. mobileOffset is not
+              optional here: at ≤600px Sonner switches to --mobile-offset-*
+              and ignores `offset` entirely, falling back to a flat 16px —
+              which lands inside the notch once viewport-fit=cover extends the
+              viewport under it. Keys we omit keep Sonner's 16px default. */}
           <Toaster
             richColors
             theme="dark"
             position="top-center"
             offset={{ top: "calc(env(safe-area-inset-top) + 3.5rem)" }}
+            mobileOffset={{ top: "calc(env(safe-area-inset-top) + 3.5rem)" }}
           />
           <RegisterServiceWorker />
         </ThemeProvider>

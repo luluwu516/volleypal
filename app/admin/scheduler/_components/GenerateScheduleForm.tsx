@@ -138,12 +138,18 @@ export function GenerateScheduleForm({
         </div>
         <div>
           <Label htmlFor="start">起始時間</Label>
+          {/* iOS Safari sizes input[type=datetime-local] from its native
+              control's intrinsic content width and overflows the card on
+              narrow phones (iPhone 13 mini, 375pt) despite w-full/min-w-0.
+              appearance-none drops that native sizing; max-w-full and the
+              smaller text keep it inside the container. */}
           <Input
             id="start"
             type="datetime-local"
             value={startsAt}
             onChange={(e) => setStartsAt(e.target.value)}
             disabled={disabled}
+            className="appearance-none max-w-full text-sm"
           />
         </div>
         {existingCount > 0 && (
