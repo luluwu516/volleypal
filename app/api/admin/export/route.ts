@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { formatInTimeZone } from "date-fns-tz";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { tryRateLimit, clientIp } from "@/lib/rateLimit";
+
+const TZ = process.env.NEXT_PUBLIC_APP_TZ || "America/Los_Angeles";
 
 // Dump every table for the current tournament as one JSON blob. Handy for
 // end-of-event archival (Supabase free tier retention isn't forever) or
@@ -78,7 +81,13 @@ export async function GET(req: Request) {
     announcements: announcements.data ?? [],
   };
 
-  const filename = `volleypal-${tournament.year}-${tid.slice(0, 8)}.json`;
+  // Date, not tournament.year: every backup taken during a tournament would
+  // otherwise land on the same name and overwrite the previous one in the
+  // browser's download folder, which defeats the point of taking one before a
+  // risky change. Rendered in the event's timezone so the filename matches the
+  // day the admin actually pressed the button.
+  const day = formatInTimeZone(new Date(), TZ, "yyyyMMdd");
+  const filename = `volleypal-${day}-${tid.slice(0, 8)}.json`;
   return new NextResponse(JSON.stringify(payload, null, 2), {
     status: 200,
     headers: {

@@ -81,7 +81,7 @@ export async function GET(req: Request) {
   const db = supabaseAdmin();
   const { data: tournament } = await db
     .from("tournaments")
-    .select("id, year")
+    .select("id")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -89,7 +89,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "no tournament" }, { status: 404 });
   }
   const tid: string = tournament.id;
-  const year: number = tournament.year;
 
   let body: string;
   switch (kind) {
@@ -107,7 +106,11 @@ export async function GET(req: Request) {
       break;
   }
 
-  const filename = `volleypal-${year}-${kind}.csv`;
+  // Date rather than tournament.year, for the same reason as the JSON backup:
+  // repeated exports during one tournament would otherwise all share a name
+  // and silently overwrite each other in the browser's download folder.
+  const day = formatInTimeZone(new Date(), TZ, "yyyyMMdd");
+  const filename = `volleypal-${day}-${kind}.csv`;
   return new NextResponse(body, {
     status: 200,
     headers: {
