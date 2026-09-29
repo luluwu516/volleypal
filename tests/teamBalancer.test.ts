@@ -131,9 +131,12 @@ describe("buildTeamsForStrategy (zodiac_together)", () => {
 });
 
 describe("buildTeamsForStrategy invariants (all strategies, N sweep)", () => {
-  // Every N × strategy combo we might see in a real tournament. Volleyball
-  // needs ≥ 6 per team → with 8 teams the floor is 48, so smaller Ns are
-  // omitted. Includes uneven splits (65, 77) and the roster cap (80).
+  // Every N × strategy combo we might see in a real tournament. 48+ is the
+  // realistic floor (volleyball wants ≥ 6 per team across 8 teams), but the
+  // smaller sizes stay in because they exercise the uneven-bucket paths more
+  // aggressively — at N=24 most zodiac buckets hold 2-3 players, so the
+  // size-rebalance and snake-split code runs closer to its edges than it ever
+  // does at full roster. Includes uneven splits (65, 77) and the cap (80).
   const SIZES = [24, 32, 40, 48, 56, 64, 65, 72, 77, 80];
   const MBTIS: MbtiTypeCode[] = Object.keys(MBTI_TO_TEMPERAMENT) as MbtiTypeCode[];
 
@@ -381,5 +384,78 @@ describe("buildTeamsForStrategy (mbti_together)", () => {
 describe("imbalance", () => {
   it("returns 0 for an empty team", () => {
     expect(imbalance([])).toBe(0);
+  });
+
+  it("scores a team at the ideal lower than one away from it", () => {
+    const at = [makePlayer("1", "1990-04-01", { skill: 8 })];
+    const away = [makePlayer("2", "1990-04-01", { skill: 2 })];
+    expect(imbalance(at, 8)).toBeLessThan(imbalance(away, 8));
+  });
+
+  it("ranks gender balance above skill balance", () => {
+    // Design priority: players notice a lopsided 6M/2F court far more than a
+    // small skill gap, so the optimiser must prefer keeping 4/4 even when that
+    // costs it a full point of team-average skill. Locks the ordering so a
+    // future retune of either weight can't silently invert it.
+    const ideal = 5;
+    const team = (male: number, skill: number) =>
+      Array.from({ length: 8 }, (_, i) =>
+        makePlayer(String(i), "1990-04-01", {
+          gender: i < male ? "male" : "female",
+          skill,
+        }),
+      );
+    // Even genders but a full point of skill drift beats lopsided genders.
+    expect(imbalance(team(4, ideal + 1), ideal)).toBeLessThan(
+      imbalance(team(5, ideal), ideal),
+    );
+    expect(imbalance(team(4, ideal + 2), ideal)).toBeLessThan(
+      imbalance(team(6, ideal), ideal),
+    );
+  });
+
+  it("does not inflate skill cost for a roster rated high on the scale", () => {
+    // Same spread (±1), different position on the 1-10 scale. Skill deviation
+    // is measured against the roster's own mean, so a squad rated 8/10 must
+    // not be scored as more "imbalanced" than one rated 3/10 — otherwise the
+    // skill term swamps the gender/position terms for high-rated rosters.
+    const low = [
+      makePlayer("1", "1990-04-01", { skill: 2, gender: "male" }),
+      makePlayer("2", "1990-04-01", { skill: 4, gender: "female" }),
+    ];
+    const high = [
+      makePlayer("3", "1990-04-01", { skill: 7, gender: "male" }),
+      makePlayer("4", "1990-04-01", { skill: 9, gender: "female" }),
+    ];
+    expect(imbalance(high, 8)).toBeCloseTo(imbalance(low, 3), 10);
+  });
+});
+
+describe("skill scale", () => {
+  it("balances a high-rated roster as evenly as a low-rated one", () => {
+    // Identical rosters apart from a +6 shift on every rating: where a roster
+    // sits on the scale must not change how evenly it splits, only its spread
+    // should. Guards the skill term against picking up an absolute-position
+    // dependency — a fixed target survives this for equal-size teams, but any
+    // future non-quadratic or size-aware cost would not.
+    const spread = (teams: { members: Player[] }[]) => {
+      const means = teams.map(
+        (t) => t.members.reduce((s, p) => s + p.skill, 0) / t.members.length,
+      );
+      return Math.max(...means) - Math.min(...means);
+    };
+    const build = (shift: number) =>
+      buildMixedTeams(
+        Array.from({ length: 64 }, (_, i) =>
+          makePlayer(String(i), "1990-04-01", {
+            skill: ((i * 7) % 4) + 1 + shift,
+            gender: i % 2 === 0 ? "male" : "female",
+          }),
+        ),
+        ELEMENTS,
+        (p) => elementFromBirthday(p.birthday)!,
+        8,
+      );
+    expect(spread(build(6))).toBeCloseTo(spread(build(0)), 10);
   });
 });

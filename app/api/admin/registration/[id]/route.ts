@@ -6,7 +6,7 @@ import { findAdminByPin } from "@/lib/auth/pin";
 import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 
 const PatchBody = z.object({
-  skill_level: z.number().int().min(1).max(5).nullable(),
+  skill_level: z.number().int().min(1).max(10).nullable(),
 });
 
 export async function PATCH(

@@ -146,7 +146,7 @@ create table registrations (
   gender gender_type,
   birthday date,
   position position_type not null default 'any',
-  skill_level smallint check (skill_level between 1 and 5),
+  skill_level smallint check (skill_level between 1 and 10),
   mbti mbti_type,
   phone text,
   email text,

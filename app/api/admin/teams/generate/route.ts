@@ -7,6 +7,8 @@ import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 import {
   buildTeamsForStrategy,
   validatePlayersFor,
+  SKILL_MIN,
+  SKILL_MAX,
   type Player,
 } from "@/lib/teamBalancer";
 import type { MbtiTypeCode } from "@/lib/db/types";
@@ -145,6 +147,18 @@ async function handleGenerate(req: Request) {
     );
   }
 
+  // Unrated players stand in at the mean of everyone who IS rated, so they
+  // neither drag a team's skill mean down nor prop it up — the balancer targets
+  // that same roster mean. A hard-coded fallback would bias against whichever
+  // team they land on, and the bias grows with the width of the rating scale.
+  const rated = regs
+    .map((r) => r.skill_level)
+    .filter((n): n is number => typeof n === "number");
+  const fallbackSkill =
+    rated.length > 0
+      ? rated.reduce((sum, n) => sum + n, 0) / rated.length
+      : (SKILL_MIN + SKILL_MAX) / 2;
+
   const players: Player[] = regs.map((r) => ({
     id: r.id,
     name: r.name,
@@ -153,7 +167,7 @@ async function handleGenerate(req: Request) {
     birthday: r.birthday ? new Date(r.birthday + "T12:00:00") : new Date(NaN),
     gender: (r.gender ?? undefined) as Player["gender"],
     position: (r.position ?? "any") as Player["position"],
-    skill: r.skill_level ?? 3,
+    skill: r.skill_level ?? fallbackSkill,
     mbti: (r.mbti ?? undefined) as MbtiTypeCode | undefined,
   }));
 

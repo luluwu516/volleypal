@@ -72,6 +72,28 @@ export function bucketPlayersBy<A extends string>(
 
 // -------- Balance / imbalance --------
 
+/** Rating scale for Player.skill — mirrors the registrations.skill_level check. */
+export const SKILL_MIN = 1;
+export const SKILL_MAX = 10;
+
+// Skill deviation is measured as a fraction of the rating scale so the gender
+// and position weights in `imbalance` stay calibrated if the scale changes.
+// The divisor puts a team sitting at the far end of the scale at skillDev ≈ 4,
+// which is what the ×16 gender weight was tuned against on the original 1–5
+// scale — so widening 1–5 → 1–10 doesn't quietly demote gender balance.
+const SKILL_DEV_NORM = (SKILL_MAX - SKILL_MIN) / 4;
+
+/**
+ * Mean skill across a roster — the value each team's own mean should approach.
+ * Passed into `imbalance` instead of a hard-coded midpoint: a roster whose
+ * ratings cluster high (or that mixes ratings made on different scales) has no
+ * reason to be pulled toward a number nobody was actually rated.
+ */
+export function meanSkill(players: Player[]): number {
+  if (players.length === 0) return (SKILL_MIN + SKILL_MAX) / 2;
+  return players.reduce((sum, p) => sum + p.skill, 0) / players.length;
+}
+
 interface BalanceOptions {
   /** A team is overloaded if its size > avg * (1 + tolerance). Default 0.15. */
   tolerance?: number;
@@ -93,6 +115,8 @@ export function balanceBucketSizes<A extends string>(
   const maxIter = options.maxIterations ?? 200;
 
   const working = buckets.map((b) => ({ ...b, members: [...b.members] }));
+  // Target every bucket at the whole roster's mean, not a fixed midpoint.
+  const idealSkill = meanSkill(working.flatMap((b) => b.members));
   const total = working.reduce((sum, b) => sum + b.members.length, 0);
   if (total === 0) return working;
   const avg = total / working.length;
@@ -115,8 +139,8 @@ export function balanceBucketSizes<A extends string>(
       const donorWithout = donor.members.filter((m) => m.id !== candidate.id);
       const recipientWith = [...recipient.members, candidate];
       const cost =
-        imbalance(donorWithout) +
-        imbalance(recipientWith) +
+        imbalance(donorWithout, idealSkill) +
+        imbalance(recipientWith, idealSkill) +
         Math.abs(donorWithout.length - recipientWith.length) * 0.5;
       if (cost < bestCost) {
         bestCost = cost;
@@ -136,7 +160,10 @@ export function balanceBucketSizes<A extends string>(
  * position distribution, and skill mean from team-internal expectations.
  * Lower is better. Used as a heuristic, not an exact metric.
  */
-export function imbalance(members: Player[]): number {
+export function imbalance(
+  members: Player[],
+  idealSkill: number = (SKILL_MIN + SKILL_MAX) / 2,
+): number {
   if (members.length === 0) return 0;
   const genderCounts: Record<Gender | "unknown", number> = {
     male: 0,
@@ -160,13 +187,17 @@ export function imbalance(members: Player[]): number {
   }
   const n = members.length;
   const skillMean = skillSum / n;
-  const idealSkill = 3;
-  const skillDev = (skillMean - idealSkill) ** 2;
+  const skillDev = ((skillMean - idealSkill) / SKILL_DEV_NORM) ** 2;
   const genderRatio = genderCounts.male / n - 0.5;
-  // Raw genderRatio² tops out at 0.25 while skillDev can reach ~4, so gender
-  // barely competes in the local-search cost. ×16 puts it in the same order of
-  // magnitude as skill so mixed-strategy swap passes actually chase 4M+4F
-  // instead of treating it as a tiebreaker.
+  // Gender balance outranks skill balance by design: an even split is what
+  // players notice on court, while a small skill gap between teams is not.
+  // Raw genderRatio² tops out at 0.25, so ×16 is what buys it that priority.
+  //
+  // Concretely, for a team of 8 this makes one step of gender imbalance cost
+  // more than a full point of team-average skill: 4M/4F → 5M/3F is worth the
+  // same as letting a team's mean drift 1.13 off the roster mean, and → 6M/2F
+  // is worth 2.25. Keep that ordering if either weight is ever retuned — see
+  // the "gender balance outranks skill balance" test.
   const genderDev = (genderRatio ** 2) * 16;
   let positionDev = 0;
   const idealPositionShare = 1 / 6;
@@ -238,6 +269,8 @@ export function buildMixedTeams<A extends string>(
 ): MixedTeam[] {
   const teams: Player[][] = Array.from({ length: teamCount }, () => []);
   const buckets = bucketPlayersBy(players, attributes, getAttribute, () => "");
+  // Target every team at the whole roster's mean, not a fixed midpoint.
+  const idealSkill = meanSkill(players);
 
   // Greedy spread: for each player (skill-desc within attribute), pick the
   // team with the fewest of this attribute already; break ties by smallest
@@ -286,12 +319,16 @@ export function buildMixedTeams<A extends string>(
           for (let b = 0; b < teams[j].length; b++) {
             const pb = teams[j][b];
             if (getAttribute(pb) !== attrA) continue;
-            const before = imbalance(teams[i]) + imbalance(teams[j]);
+            const before =
+              imbalance(teams[i], idealSkill) +
+              imbalance(teams[j], idealSkill);
             const swappedI = [...teams[i]];
             swappedI[a] = pb;
             const swappedJ = [...teams[j]];
             swappedJ[b] = pa;
-            const after = imbalance(swappedI) + imbalance(swappedJ);
+            const after =
+              imbalance(swappedI, idealSkill) +
+              imbalance(swappedJ, idealSkill);
             if (after + 1e-6 < before) {
               teams[i] = swappedI;
               teams[j] = swappedJ;

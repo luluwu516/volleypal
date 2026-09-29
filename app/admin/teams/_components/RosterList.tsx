@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Registration } from "@/lib/db/types";
 import { displayName } from "@/lib/format/name";
+import { SKILL_MIN, SKILL_MAX } from "@/lib/teamBalancer";
 import {
   signFromBirthday,
   elementFromBirthday,
@@ -199,13 +200,14 @@ export function RosterList({
 // text, which drifts if the trigger has vertical padding). A Popover anchors
 // predictably below the trigger and lets us hit the 44pt touch target on the
 // options themselves.
+// Derived from the balancer's scale so the picker can't drift out of sync with
+// the registrations.skill_level check constraint. "" clears the rating.
 const SKILL_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "", label: "—" },
-  { value: "1", label: "1" },
-  { value: "2", label: "2" },
-  { value: "3", label: "3" },
-  { value: "4", label: "4" },
-  { value: "5", label: "5" },
+  ...Array.from({ length: SKILL_MAX - SKILL_MIN + 1 }, (_, i) => {
+    const n = SKILL_MIN + i;
+    return { value: String(n), label: String(n) };
+  }),
 ];
 
 function SkillPicker({
@@ -231,14 +233,20 @@ function SkillPicker({
           {display}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-24 p-1" align="end">
-        <ul className="flex flex-col">
+      {/* 2-column grid: a 1–10 scale plus the clear option is 11 items, which
+          as a single column overflows the viewport on a phone. The clear row
+          spans both columns so the numbers stay in a clean 5×2 block. */}
+      <PopoverContent className="w-32 p-1" align="end">
+        <ul className="grid grid-cols-2 gap-0.5">
           {SKILL_OPTIONS.map((opt) => {
             const isCurrent =
               (value == null && opt.value === "") ||
               String(value) === opt.value;
             return (
-              <li key={opt.value || "clear"}>
+              <li
+                key={opt.value || "clear"}
+                className={opt.value === "" ? "col-span-2" : undefined}
+              >
                 <button
                   type="button"
                   onClick={() => {
