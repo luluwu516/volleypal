@@ -52,7 +52,7 @@ describe("buildStandings — basic 4-team round robin", () => {
 });
 
 describe("tiebreak — points then set ratio then point ratio", () => {
-  it("breaks tie on set ratio when wins+points equal", () => {
+  it("falls through to point ratio when wins, points and set ratio all tie", () => {
     const ts = ["a", "b", "c", "d"];
     const rs: MatchResult[] = [
       match("a", "c", [[25, 20], [25, 20]], "a"),
@@ -63,16 +63,13 @@ describe("tiebreak — points then set ratio then point ratio", () => {
       match("c", "d", [[25, 20], [25, 22]], "c"),
     ];
     const standings = buildStandings(ts, rs);
-    // a: W 2 (vs c, b), L 1 (vs d). sets won/lost: 2+2+0=4 / 0+0+2=2 = 2.0
-    // b: W 1 (vs c), L 2 (vs d, a). sets: 2+0+0=2 / 1+2+2=5 = 0.4
-    // c: W 1 (vs d), L 2 (vs a, b). sets: 0+1+2=3 / 2+2+0=5 = 0.6
-    // d: W 2 (vs a, b), L 1 (vs c). sets: 2+2+0=4 / 0+0+2=2 = 2.0
-    // a and d tied: 2W, points=2*2+1=5, set ratio 2.0
-    // need to break by point ratio
-    const top = standings[0];
-    expect([top.teamId]).toEqual(["a"]); // a comes before d alphabetically only if all other equal; let's just verify wins/points
-    expect(standings.find((s) => s.teamId === "a")!.wins).toBe(2);
-    expect(standings.find((s) => s.teamId === "d")!.wins).toBe(2);
+    const a = standings.find((s) => s.teamId === "a")!;
+    const d = standings.find((s) => s.teamId === "d")!;
+    // a and d are deadlocked on every earlier key — same wins, same total
+    // points scored, same set ratio — so only point ratio separates them.
+    expect([a.wins, a.points, a.setRatio]).toEqual([d.wins, d.points, d.setRatio]);
+    expect(a.pointRatio).toBeGreaterThan(d.pointRatio);
+    expect(standings.map((s) => s.teamId)).toEqual(["a", "d", "c", "b"]);
   });
 });
 

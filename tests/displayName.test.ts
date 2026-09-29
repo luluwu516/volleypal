@@ -24,13 +24,11 @@ describe("displayName", () => {
   });
 
   it("trims surrounding whitespace on preferred", () => {
-    // A form with a stray space shouldn't make the label look off. displayName
-    // returns the trimmed form (via the presence check + fallback rule).
-    const r = { name: "Wang Xiaoming", preferred_name: "  Alex  " };
-    // We accept either the trimmed nickname or, if a future implementation
-    // switches to display the untrimmed value, the untrimmed form — but not
-    // the legal name.
-    expect(displayName(r)).not.toBe("Wang Xiaoming");
+    // Google Forms answers routinely carry a trailing space; rendering it
+    // verbatim leaves the label looking misaligned next to its neighbours.
+    expect(
+      displayName({ name: "Wang Xiaoming", preferred_name: "  Alex  " }),
+    ).toBe("Alex");
   });
 });
 

@@ -1,16 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { pick } from "../app/api/form-webhook/route";
-
-// Alias list mirrors form-webhook `handleRegistration`. Keep it in sync
-// with the production list so this test actually locks the field.
-const PREFERRED_NAME_ALIASES = [
-  "preferred_name",
-  "preferred name",
-  "nickname",
-  "暱稱",
-  "常用稱呼",
-  "英文名",
-];
+// Imports the PRODUCTION alias list, not a copy. A local copy would keep
+// passing if someone re-added the bare "preferred" alias upstream, which is
+// precisely the regression these cases exist to catch.
+import { pick, PREFERRED_NAME_ALIASES } from "../app/api/form-webhook/route";
 
 describe("pick(preferred_name aliases)", () => {
   it("returns nickname when set on the intended field", () => {

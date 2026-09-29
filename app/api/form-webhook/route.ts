@@ -87,6 +87,24 @@ function normalizePosition(raw: string | null): string {
 }
 
 /**
+ * Question titles that map to `preferred_name`. DELIBERATELY specific: the
+ * bare word "preferred" is out because pick() matches on substring, so a form
+ * titled 「場上偏好位置 (Preferred Position)」 would hijack the nickname field
+ * with a position answer whenever the nickname question was left blank. That
+ * shipped once — nicknames came back as "千萬不要讓我舉球".
+ *
+ * Exported so the regression test locks THIS list rather than a copy of it.
+ */
+export const PREFERRED_NAME_ALIASES = [
+  "preferred_name",
+  "preferred name",
+  "nickname",
+  "暱稱",
+  "常用稱呼",
+  "英文名",
+];
+
+/**
  * Chinese markers are unambiguous (女 ⊄ 男, 男 ⊄ 女) and checked first.
  * English needs "female" BEFORE "male" because "female".includes("male") is
  * true — the earlier `for (g of ["male","female","other"])` loop caught every
@@ -196,20 +214,8 @@ async function handleRegistration(
   const email = pick(r, ["email", "e-mail", "電子郵件", "電子信箱"]);
   const phone = pick(r, ["phone", "電話"]);
   // Preferred / nickname — optional. Legal `name` remains the waiver-match
-  // key; this is display-only. Aliases are DELIBERATELY specific — the
-  // bare word "preferred" is out because pick() uses substring `.includes`
-  // and a form titled 「場上偏好位置 (Preferred Position)」 would otherwise
-  // hijack this field with a position answer when the nickname question
-  // was left blank (real prod bug: nicknames came back as
-  // "千萬不要讓我舉球").
-  const preferredName = pick(r, [
-    "preferred_name",
-    "preferred name",
-    "nickname",
-    "暱稱",
-    "常用稱呼",
-    "英文名",
-  ]);
+  // key; this is display-only.
+  const preferredName = pick(r, PREFERRED_NAME_ALIASES);
   const gender = normalizeGender(pick(r, ["gender", "性別", "sex"]));
   const position = normalizePosition(pick(r, ["position", "位置"]));
   const mbti = normalizeMbti(pick(r, ["mbti", "人格", "性格"]));
