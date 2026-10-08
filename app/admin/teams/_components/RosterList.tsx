@@ -77,6 +77,12 @@ export function RosterList({
           const j = (await res.json().catch(() => ({}))) as { error?: string };
           throw new Error(j.error ?? "Save failed");
         }
+        // The optimistic update above only touches this list's own rows.
+        // TeamsBoard derives each team's average skill from the server's
+        // `registrations` prop, so without a refresh the board keeps showing
+        // the pre-edit averages — exactly the number admins are re-rating
+        // players in order to watch.
+        router.refresh();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
         setRows((prev) =>
