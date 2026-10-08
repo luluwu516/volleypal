@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Registration } from "@/lib/db/types";
@@ -19,6 +19,7 @@ import {
 import { EmptyState } from "@/components/EmptyState";
 import { RegistrationNameCell } from "./RegistrationNameCell";
 import { DeleteRegistrationDialog } from "./DeleteRegistrationDialog";
+import { useSkillStore } from "./SkillStore";
 
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
@@ -50,54 +51,59 @@ export function RosterList({
   disabled?: boolean;
 }) {
   const router = useRouter();
-  const [rows, setRows] = useState(
-    [...registrations].sort((a, b) =>
-      displayName(a).localeCompare(displayName(b), "zh-Hant"),
-    ),
+  const { withSkill, setSkill } = useSkillStore();
+  // Derived, not snapshotted: `deactivate` and the delete dialog both finish
+  // with router.refresh(), and a useState copy would have gone on rendering
+  // the row they just removed. Ratings come off the shared store instead of
+  // this list's own state so the teams board sees the same number.
+  const rows = useMemo(
+    () =>
+      [...registrations]
+        .sort((a, b) =>
+          displayName(a).localeCompare(displayName(b), "zh-Hant"),
+        )
+        .map(withSkill),
+    [registrations, withSkill],
   );
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   // Row targeted for deletion. Held in state so the PIN dialog stays mounted
   // independent of the Popover's own open/close (dismissing the Popover after
   // 「刪除報名」click should not also dismiss the pin prompt).
   const [pendingDelete, setPendingDelete] = useState<Registration | null>(null);
+  // Rows with an in-flight PATCH. Per row rather than page-wide: admins
+  // re-rate several players in a row, and one shared busy flag locked every
+  // other picker for the length of each request. Locking only the row being
+  // saved still stops two taps on the same player from landing out of order.
+  const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(new Set());
 
-  async function updateSkill(id: string, raw: string) {
+  async function updateSkill(reg: Registration, raw: string) {
     const skill = raw === "" ? null : Number(raw);
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, skill_level: skill } : r)),
-    );
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/admin/registration/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ skill_level: skill }),
-        });
-        if (!res.ok) {
-          const j = (await res.json().catch(() => ({}))) as { error?: string };
-          throw new Error(j.error ?? "Save failed");
-        }
-        // The optimistic update above only touches this list's own rows.
-        // TeamsBoard derives each team's average skill from the server's
-        // `registrations` prop, so without a refresh the board keeps showing
-        // the pre-edit averages — exactly the number admins are re-rating
-        // players in order to watch.
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
-        setRows((prev) =>
-          prev.map((r) =>
-            r.id === id
-              ? {
-                  ...r,
-                  skill_level:
-                    registrations.find((x) => x.id === id)?.skill_level ?? null,
-                }
-              : r,
-          ),
-        );
+    // `reg` already carries the store's value, so this is what to roll back to
+    // — the server's copy may be a rating earlier in this same session.
+    const previous = reg.skill_level;
+    if (skill === previous) return;
+    setSkill(reg.id, skill);
+    setSavingIds((prev) => new Set(prev).add(reg.id));
+    try {
+      const res = await fetch(`/api/admin/registration/${reg.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skill_level: skill }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Save failed");
       }
-    });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      setSkill(reg.id, previous);
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(reg.id);
+        return next;
+      });
+    }
   }
 
   async function deactivate(id: string) {
@@ -178,8 +184,8 @@ export function RosterList({
                 </span>
                 <SkillPicker
                   value={r.skill_level}
-                  onChange={(v) => updateSkill(r.id, v)}
-                  disabled={pending || disabled}
+                  onChange={(v) => updateSkill(r, v)}
+                  disabled={disabled || savingIds.has(r.id)}
                 />
               </li>
             );

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { elementFromBirthday } from "@/lib/zodiac";
 import { MBTI_TO_TEMPERAMENT } from "@/lib/mbti";
+import { useSkillStore } from "./SkillStore";
 
 const ELEMENT_DOT: Record<string, string> = {
   fire: "bg-red-500/80",
@@ -85,9 +86,13 @@ export function TeamsBoard({
 }: Props) {
   const router = useRouter();
   const kind = attributeKind(strategy);
+  // Ratings come through the shared store so re-rating a player in the roster
+  // below moves this board's per-player Lv and team average on the same tap,
+  // instead of waiting for a server round trip to carry the number up here.
+  const { withSkill } = useSkillStore();
   const regById = useMemo(
-    () => new Map(registrations.map((r) => [r.id, r])),
-    [registrations],
+    () => new Map(registrations.map((r) => [r.id, withSkill(r)])),
+    [registrations, withSkill],
   );
 
   // Local mirror of team_members → team_id so we can move without a page

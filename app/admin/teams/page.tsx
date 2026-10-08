@@ -10,6 +10,7 @@ import { ActiveRosterHeader } from "./_components/ActiveRosterHeader";
 import { RegistrationTabs } from "./_components/RegistrationTabs";
 import { PendingWaiverList } from "./_components/PendingWaiverList";
 import { TeamsBoard } from "./_components/TeamsBoard";
+import { SkillStoreProvider } from "./_components/SkillStore";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -91,37 +92,42 @@ export default async function TeamsPage() {
         registrations={registrations}
       />
 
-      {/* Teams board sits above the roster: once teams exist it's the thing
-          admin came here to look at, while the roster (64+ rows) becomes
-          reference data. Before generation the board isn't rendered at all,
-          so the roster naturally stays at the top during the confirm phase. */}
-      {teams.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
-            目前分隊
-          </h2>
-          <TeamsBoard
-            // Remount when the underlying team set changes so the internal
-            // assignment state re-initialises after 一鍵分隊 / import.
-            // Otherwise it holds stale team_id → registration_id mappings
-            // and every card shows empty until a hard refresh.
-            key={teams.map((t) => t.id).join(",")}
-            teams={teams}
-            registrations={registrations}
-            initialMembers={members ?? []}
-            strategy={tournament.grouping_strategy}
-            disabled={locked}
-          />
-        </section>
-      )}
+      {/* Ratings are edited in the roster but read back as team averages in
+          the board, so the two need somewhere shared to put an edit. Renders
+          no DOM of its own — the sections below stay direct flex children. */}
+      <SkillStoreProvider registrations={registrations}>
+        {/* Teams board sits above the roster: once teams exist it's the thing
+            admin came here to look at, while the roster (64+ rows) becomes
+            reference data. Before generation the board isn't rendered at all,
+            so the roster naturally stays at the top during the confirm phase. */}
+        {teams.length > 0 && (
+          <section>
+            <h2 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
+              目前分隊
+            </h2>
+            <TeamsBoard
+              // Remount when the underlying team set changes so the internal
+              // assignment state re-initialises after 一鍵分隊 / import.
+              // Otherwise it holds stale team_id → registration_id mappings
+              // and every card shows empty until a hard refresh.
+              key={teams.map((t) => t.id).join(",")}
+              teams={teams}
+              registrations={registrations}
+              initialMembers={members ?? []}
+              strategy={tournament.grouping_strategy}
+              disabled={locked}
+            />
+          </section>
+        )}
 
-      <PendingWaiverList
-        pending={pendingWaivers}
-        registrations={registrations}
-        disabled={locked}
-      />
+        <PendingWaiverList
+          pending={pendingWaivers}
+          registrations={registrations}
+          disabled={locked}
+        />
 
-      <RegistrationTabs registrations={registrations} disabled={locked} />
+        <RegistrationTabs registrations={registrations} disabled={locked} />
+      </SkillStoreProvider>
 
       {/* Sticks above BottomNav (≈4rem tall) plus the notched-phone safe
           area, so the button never gets hidden behind the nav on iPhones
