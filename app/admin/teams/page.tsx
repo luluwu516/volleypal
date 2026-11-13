@@ -10,6 +10,7 @@ import { ActiveRosterHeader } from "./_components/ActiveRosterHeader";
 import { RegistrationTabs } from "./_components/RegistrationTabs";
 import { PendingWaiverList } from "./_components/PendingWaiverList";
 import { TeamsBoard } from "./_components/TeamsBoard";
+import { UnassignedPlayers } from "./_components/UnassignedPlayers";
 import { SkillStoreProvider } from "./_components/SkillStore";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
@@ -61,6 +62,13 @@ export default async function TeamsPage() {
 
   const activeCount = registrations.filter((r) => r.is_active).length;
   const canGenerate = activeCount >= 8;
+  // Confirmed players with no seat. Produced by the replacement flow: 退回候補
+  // frees a seat, and the waitlisted player confirmed into it arrives with no
+  // team of their own. Nothing else on the page would show them.
+  const assignedIds = new Set((members ?? []).map((m) => m.registration_id));
+  const unassigned = registrations.filter(
+    (r) => r.is_active && !assignedIds.has(r.id),
+  );
   const STRATEGY_LABEL: Record<string, string> = {
     zodiac_together: "同星座象",
     zodiac_mixed: "打散星座象",
@@ -110,7 +118,14 @@ export default async function TeamsPage() {
               // assignment state re-initialises after 一鍵分隊 / import.
               // Otherwise it holds stale team_id → registration_id mappings
               // and every card shows empty until a hard refresh.
-              key={teams.map((t) => t.id).join(",")}
+              //
+              // The member count is in the key for the same reason: seating an
+              // unassigned player or freeing a seat with 退回候補 changes who
+              // belongs to a team without changing which teams exist, and the
+              // board would otherwise keep rendering the membership it booted
+              // with. A move between teams leaves the count alone, so manual
+              // drag state survives the refresh that follows it.
+              key={`${teams.map((t) => t.id).join(",")}:${(members ?? []).length}`}
               teams={teams}
               registrations={registrations}
               initialMembers={members ?? []}
@@ -119,6 +134,13 @@ export default async function TeamsPage() {
             />
           </section>
         )}
+
+        <UnassignedPlayers
+          players={unassigned}
+          teams={teams}
+          members={members ?? []}
+          disabled={locked}
+        />
 
         <PendingWaiverList
           pending={pendingWaivers}

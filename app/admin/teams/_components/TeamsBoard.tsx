@@ -189,7 +189,15 @@ export function TeamsBoard({
                 )}
               </CardTitle>
               <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
-                <span>{teamMembers.length} 人</span>
+                {/* Amber when this team is short of the fullest one — a seat
+                    opened by 退回候補 is otherwise a silent 7 among 8s. */}
+                <span
+                  className={
+                    teamMembers.length < maxSize ? "text-amber-400" : undefined
+                  }
+                >
+                  {teamMembers.length} 人
+                </span>
                 {metrics.avgSkill != null && (
                   <span title="平均實力">Lv {metrics.avgSkill.toFixed(1)}</span>
                 )}
