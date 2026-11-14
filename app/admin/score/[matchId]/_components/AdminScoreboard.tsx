@@ -190,7 +190,7 @@ export function AdminScoreboard({
     totalA > totalB ? "a" : totalB > totalA ? "b" : null;
 
   // Knockout match whose feeder game hasn't finished yet — either team slot
-  // holds a source label like "Gold Semi 1 W" instead of a real team id.
+  // holds a source label like 「準決賽 1 勝者」 instead of a real team id.
   // Scoring/starting these leaves orphan match_sets and a serve pointer
   // that can't resolve, so gate all controls behind an explicit banner.
   const unresolvedTeams = !match.team_a_id || !match.team_b_id;

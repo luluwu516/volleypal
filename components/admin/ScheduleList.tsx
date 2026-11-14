@@ -15,14 +15,23 @@ function teamName(
   return source ?? "TBD";
 }
 
+
+// Named by the places at stake, not by bracket colour. The DB phases are
+// still called silver_* — renaming an enum buys nothing — but "Gold" and
+// "Silver" brackets are North American recreational-tournament jargon, and
+// 「銀盃」is a calque of it that players here don't use. 「排位賽」is the term
+// they'd actually recognise, and a bare rank range needs no term at all.
+//
+// Player-facing surfaces only. The scoring screens deliberately show the raw
+// phase: that's an admin-only display and the English is unambiguous there.
 const PHASE_LABEL: Record<string, string> = {
   group: "預賽",
-  semifinal: "Gold 準決賽",
-  final: "Gold 決賽",
-  third_place: "Gold 季軍",
-  silver_semifinal: "Silver 準決賽",
-  silver_final: "Silver 決賽",
-  silver_third_place: "Silver 7-8 名",
+  semifinal: "準決賽",
+  final: "決賽",
+  third_place: "季軍賽",
+  silver_semifinal: "5-8 名準決賽",
+  silver_final: "5-6 名",
+  silver_third_place: "7-8 名",
 };
 
 export function ScheduleList({

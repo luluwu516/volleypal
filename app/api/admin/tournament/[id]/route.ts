@@ -9,6 +9,16 @@ const Body = z.object({
   grouping_strategy: z
     .enum(["zodiac_together", "zodiac_mixed", "mbti_together", "mbti_mixed"])
     .optional(),
+  // Even only — the format is always two equal groups. Mirrors the CHECK on
+  // the column and MIN_TEAMS / MAX_TEAMS in lib/tournamentFormat.ts.
+  num_teams: z
+    .number()
+    .int()
+    .min(4)
+    .max(16)
+    .refine((n) => n % 2 === 0, { message: "num_teams must be even" })
+    .optional(),
+  group_rounds: z.number().int().min(1).max(2).optional(),
   // ISO 8601 UTC string (from datetime-local converted to UTC on client) or
   // null to unset. Empty string coerces to null so the picker's "clear"
   // button can just send "".
@@ -23,6 +33,7 @@ const Body = z.object({
   max_non_taiwanese: z.number().int().min(0).max(200).optional(),
   allow_player_broadcast: z.boolean().optional(),
   skip_third_place: z.boolean().optional(),
+  skip_silver_bracket: z.boolean().optional(),
   skip_silver_third_place: z.boolean().optional(),
   rules_doc_url: z.string().url().nullable().optional().or(z.literal("")),
   registration_form_url: z

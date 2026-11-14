@@ -2,7 +2,7 @@
  * After a match transitions to "finished", advance the knockout bracket:
  *
  *   group match -> when ALL group matches are finished, fill both groups'
- *                  Gold & Silver semifinal team_a_id / team_b_id from the
+ *                  both brackets' semifinal team_a_id / team_b_id from the
  *                  current standings.
  *
  *   semifinal   -> when BOTH gold semifinals are finished, fill the gold
@@ -17,6 +17,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { standingsForGroup } from "./ranking-helpers";
+import {
+  SILVER_DIRECT_SOURCE_A,
+  SILVER_DIRECT_SOURCE_B,
+} from "./scheduler";
 import type { Match, MatchSet } from "./db/types";
 
 type DB = SupabaseClient;
@@ -140,6 +144,15 @@ async function fillSemifinalsFromStandings(db: DB, tournamentId: string) {
       m.team_a_source === "B 組 #3"
     ) {
       await setSlotsIfEmpty(db, m.id, B[2] ?? null, A[3] ?? null);
+    } else if (
+      // A 6-team format's 5-6 match: no silver semis to wait on, so it fills
+      // from the standings right here. Its sources are what distinguish it
+      // from the 8-team silver_final, which is fed by silver semi winners.
+      m.phase === "silver_final" &&
+      m.team_a_source === SILVER_DIRECT_SOURCE_A &&
+      m.team_b_source === SILVER_DIRECT_SOURCE_B
+    ) {
+      await setSlotsIfEmpty(db, m.id, A[2] ?? null, B[2] ?? null);
     }
   }
 }

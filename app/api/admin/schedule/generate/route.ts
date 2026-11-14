@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/getSession";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { buildFullSchedule, type SchedulerTeam } from "@/lib/scheduler";
+import { tournamentShape } from "@/lib/tournamentFormat";
 import { findAdminByPin } from "@/lib/auth/pin";
 import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -51,51 +52,58 @@ export async function POST(req: Request) {
     }
   }
 
+  // Size and placement toggles live on the tournament row so the choices
+  // persist across regens; the bracket shape is derived from them.
+  const { data: tournamentRow } = await db
+    .from("tournaments")
+    .select(
+      "num_teams, group_rounds, skip_third_place, skip_silver_bracket, skip_silver_third_place",
+    )
+    .eq("id", body.tournamentId)
+    .maybeSingle();
+  const shape = tournamentShape({
+    numTeams: tournamentRow?.num_teams ?? 8,
+    groupRounds: tournamentRow?.group_rounds ?? 1,
+    skipThirdPlace: Boolean(tournamentRow?.skip_third_place),
+    skipSilverBracket: Boolean(tournamentRow?.skip_silver_bracket),
+    skipSilverThirdPlace: Boolean(tournamentRow?.skip_silver_third_place),
+  });
+
   const { data: teams, error: tErr } = await db
     .from("teams")
     .select("id, seed")
     .eq("tournament_id", body.tournamentId)
     .order("seed", { ascending: true, nullsFirst: false });
   if (tErr) throw tErr;
-  if (!teams || teams.length !== 8) {
+  if (!teams || teams.length !== shape.numTeams) {
     return NextResponse.json(
-      { error: `需要 8 隊 (目前 ${teams?.length ?? 0})` },
+      {
+        error: `賽事設定為 ${shape.numTeams} 隊 (目前有 ${teams?.length ?? 0} 隊)。請先重新分隊,或到賽事設定改隊伍數。`,
+      },
       { status: 400 },
     );
   }
-
-  // Placement-match toggles live on the tournament row so the choice
-  // persists across regens. Missing tournament → treat both as enabled
-  // (fall back to default schedule; the tournament itself would fail the
-  // teams query above anyway).
-  const { data: tournamentRow } = await db
-    .from("tournaments")
-    .select("skip_third_place, skip_silver_third_place")
-    .eq("id", body.tournamentId)
-    .maybeSingle();
-  const skipThirdPlace = Boolean(tournamentRow?.skip_third_place);
-  const skipSilverThirdPlace = Boolean(tournamentRow?.skip_silver_third_place);
 
   // Snake-draft seeds into groups so that:
   //   - same-element sub-teams (e.g. 土象 A / 土象 B) end up in different groups,
   //   - the two groups don't play symmetric mirror matchups
   //     (avoids the "土象A vs 水象A" + "土象B vs 水象B" pattern in parallel courts).
-  // Seeds 1-8 -> A B B A A B B A
+  // Seeds 1-8 -> A B B A A B B A; seeds 1-6 -> A B B A A B. Generalised from
+  // the pair index so any even team count snakes the same way.
   const groupA: SchedulerTeam[] = [];
   const groupB: SchedulerTeam[] = [];
-  const SNAKE = ["A", "B", "B", "A", "A", "B", "B", "A"] as const;
   teams.forEach((t, i) => {
-    const label = SNAKE[i] ?? (i % 2 === 0 ? "A" : "B");
+    const pair = Math.floor(i / 2);
+    const label = (pair + (i % 2)) % 2 === 0 ? "A" : "B";
     (label === "A" ? groupA : groupB).push({ id: t.id, groupLabel: label });
   });
 
   const schedule = buildFullSchedule({
     teams: [...groupA, ...groupB],
+    shape,
     numCourts: body.numCourts,
     matchDurationMin: body.matchDurationMin,
     startsAt: new Date(body.startsAt),
-    skipThirdPlace,
-    skipSilverThirdPlace,
   });
 
   // Clear pending matches; preserve finished

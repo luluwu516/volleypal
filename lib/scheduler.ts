@@ -1,14 +1,19 @@
 /**
  * Tournament scheduler for VolleyPal.
  *
- * Format: 8 teams split into two groups of 4 (A, B). Each group plays a single
- * round-robin (6 matches per group, 12 total). Top 2 from each group advance
- * to a crossover semifinal (A1 vs B2, B1 vs A2), then final + third-place.
+ * Every format is two groups (A, B) playing a round-robin, then a crossover
+ * knockout: top 2 of each group into the Gold semis (A1 vs B2, B1 vs A2),
+ * then final + 3rd place. What varies is the group size, how many times each
+ * group plays itself, and the lower bracket — all of which `TournamentShape`
+ * carries, derived in `lib/tournamentFormat.ts` from two numbers and the
+ * placement toggles rather than enumerated.
  *
  * Court & time assignment is greedy: at each timeslot we fill as many courts
  * as possible with matches whose teams are not already playing this slot and
  * who did not play the previous slot (rest constraint, best-effort).
  */
+
+import type { TournamentShape } from "./tournamentFormat";
 
 export interface SchedulerTeam {
   id: string;
@@ -16,15 +21,13 @@ export interface SchedulerTeam {
 }
 
 export interface SchedulerInput {
-  teams: SchedulerTeam[]; // expects 8 teams, 4 per group
+  /** Must hold exactly `shape.numTeams`, split evenly between A and B. */
+  teams: SchedulerTeam[];
+  shape: TournamentShape;
   numCourts: number;
   matchDurationMin: number;
   /** ISO timestamp for the first match. */
   startsAt: Date;
-  /** Omit the Gold 3rd-place match (semi losers tied at 3rd). */
-  skipThirdPlace?: boolean;
-  /** Omit the Silver 7-8 match (silver-semi losers tied at 7th). */
-  skipSilverThirdPlace?: boolean;
 }
 
 export type Phase =
@@ -213,33 +216,35 @@ export function assignGroupRefs(
 export function scheduleGroupStage(
   input: SchedulerInput,
 ): ScheduledMatch[] {
+  const { groupSize, groupRounds } = input.shape;
   const groupA = input.teams.filter((t) => t.groupLabel === "A");
   const groupB = input.teams.filter((t) => t.groupLabel === "B");
-  if (groupA.length !== 4 || groupB.length !== 4) {
+  if (groupA.length !== groupSize || groupB.length !== groupSize) {
     throw new Error(
-      `scheduler: expected 4 teams per group, got A=${groupA.length} B=${groupB.length}`,
+      `scheduler: ${input.shape.numTeams} teams means ${groupSize} per group, got A=${groupA.length} B=${groupB.length}`,
     );
   }
   const pending: PendingMatch[] = [];
-  let idx = 0;
-  for (const [a, b] of roundRobinPairs(groupA)) {
-    pending.push({
-      phase: "group",
-      groupLabel: "A",
-      index: idx++,
-      teamAId: a.id,
-      teamBId: b.id,
-    });
-  }
-  idx = 0;
-  for (const [a, b] of roundRobinPairs(groupB)) {
-    pending.push({
-      phase: "group",
-      groupLabel: "B",
-      index: idx++,
-      teamAId: a.id,
-      teamBId: b.id,
-    });
+  for (const [label, group] of [
+    ["A", groupA],
+    ["B", groupB],
+  ] as const) {
+    let idx = 0;
+    for (let round = 0; round < groupRounds; round++) {
+      for (const [a, b] of roundRobinPairs(group)) {
+        // Second time through, swap who is listed first. Nothing downstream
+        // depends on the order, but it keeps the 對戰表 from showing the same
+        // fixture twice in the same orientation, which reads like a bug.
+        const [home, away] = round % 2 === 0 ? [a, b] : [b, a];
+        pending.push({
+          phase: "group",
+          groupLabel: label,
+          index: idx++,
+          teamAId: home.id,
+          teamBId: away.id,
+        });
+      }
+    }
   }
   const scheduled = assignCourtsAndTimes(
     pending,
@@ -254,29 +259,55 @@ export function scheduleGroupStage(
 }
 
 /**
- * Generate knockout shells (no team IDs yet) for the Gold and Silver brackets.
+ * Source label for the single 5-6 match a "single" lower bracket produces.
+ * Load-bearing: it's how autoFillKnockout tells that 5-6 match (filled from
+ * the group standings the moment the groups end) apart from the 8-team
+ * silver_final (filled from its own semis' winners).
+ */
+export const SILVER_DIRECT_SOURCE_A = "A 組 #3";
+export const SILVER_DIRECT_SOURCE_B = "B 組 #3";
+
+/**
+ * Generate knockout shells (no team IDs yet) for both brackets.
  *
- * Gold bracket (top 2 from each group play for places 1-4):
- *   - Semi G1: A 組 #1 vs B 組 #2
- *   - Semi G2: B 組 #1 vs A 組 #2
- *   - Final:        Semi G1 W vs Semi G2 W   (1st vs 2nd)
- *   - 3rd Place:    Semi G1 L vs Semi G2 L   (3rd vs 4th)
+ * The DB phases are named semifinal / silver_semifinal etc. and stay that
+ * way; the player-facing labels live in ScheduleList and Bracket and are
+ * named by the places at stake instead, since "Silver bracket" is jargon
+ * these players don't use.
  *
- * Silver bracket (bottom 2 from each group play for places 5-8):
- *   - Semi S1: A 組 #3 vs B 組 #4
- *   - Semi S2: B 組 #3 vs A 組 #4
- *   - Silver Final: Semi S1 W vs Semi S2 W   (5th vs 6th)
- *   - 7-8 Place:    Semi S1 L vs Semi S2 L   (7th vs 8th)
+ * Upper bracket, identical in every shape (top 2 of each group, places 1-4):
+ *   - Semi 1:   A 組 #1 vs B 組 #2
+ *   - Semi 2:   B 組 #1 vs A 組 #2
+ *   - 決賽:      Semi 1 W vs Semi 2 W   (1st vs 2nd)
+ *   - 季軍賽:    Semi 1 L vs Semi 2 L   (3rd vs 4th)
  *
- * 8 matches total. Scheduled in two rounds (semis, then finals).
- * Within a round, matches fill courts in order; if more matches than courts,
- * the round spills into multiple time slots.
+ * Lower bracket, per `shape.lowerBracket` — which is derived from the group
+ * size rather than chosen, since the gold bracket always takes the top 2 and
+ * what's left over is whatever the group size leaves over:
+ *   "semis"  (groups of 4+ — #3 and #4 of each group play for places 5-8)
+ *   - Semi S1:  A 組 #3 vs B 組 #4
+ *   - Semi S2:  B 組 #3 vs A 組 #4
+ *   - 5-6 名:    Semi S1 W vs Semi S2 W
+ *   - 7-8 名:    Semi S1 L vs Semi S2 L
+ *
+ *   "single" (groups of 3 — one match between the group thirds)
+ *   - 5-6 名:    A 組 #3 vs B 組 #3
+ *     Runs in the FIRST knockout wave, not the second: it depends only on the
+ *     group standings, so making it wait for the gold semis would idle a
+ *     court and push the finals a slot later for no reason.
+ *
+ *   "none"   nothing — 5th and below stand on group record. Also what you
+ *            get from 不打排位賽, which is a placement toggle, not a shape.
+ *
+ * Scheduled in two waves (everything that depends only on groups, then
+ * everything that depends on a semi). Within a wave, matches fill courts in
+ * order; if a wave has more matches than courts it spills into more slots.
  */
 export function buildKnockoutShells(
+  shape: TournamentShape,
   startsAt: Date,
   matchDurationMin: number,
   numCourts: number,
-  opts?: { skipThirdPlace?: boolean; skipSilverThirdPlace?: boolean },
 ): ScheduledMatch[] {
   type Shell = Omit<ScheduledMatch, "court" | "scheduledAt">;
 
@@ -299,25 +330,43 @@ export function buildKnockoutShells(
       teamASource: "B 組 #1",
       teamBSource: "A 組 #2",
     },
-    {
-      phase: "silver_semifinal",
+  ];
+
+  if (shape.lowerBracket === "semis") {
+    semis.push(
+      {
+        phase: "silver_semifinal",
+        groupLabel: null,
+        index: 0,
+        teamAId: null,
+        teamBId: null,
+        teamASource: SILVER_DIRECT_SOURCE_A,
+        teamBSource: "B 組 #4",
+      },
+      {
+        phase: "silver_semifinal",
+        groupLabel: null,
+        index: 1,
+        teamAId: null,
+        teamBId: null,
+        teamASource: SILVER_DIRECT_SOURCE_B,
+        teamBSource: "A 組 #4",
+      },
+    );
+  } else if (
+    shape.lowerBracket === "single" &&
+    !shape.skipSilverThirdPlace
+  ) {
+    semis.push({
+      phase: "silver_final",
       groupLabel: null,
       index: 0,
       teamAId: null,
       teamBId: null,
-      teamASource: "A 組 #3",
-      teamBSource: "B 組 #4",
-    },
-    {
-      phase: "silver_semifinal",
-      groupLabel: null,
-      index: 1,
-      teamAId: null,
-      teamBId: null,
-      teamASource: "B 組 #3",
-      teamBSource: "A 組 #4",
-    },
-  ];
+      teamASource: SILVER_DIRECT_SOURCE_A,
+      teamBSource: SILVER_DIRECT_SOURCE_B,
+    });
+  }
 
   const finals: Shell[] = [
     {
@@ -326,10 +375,10 @@ export function buildKnockoutShells(
       index: 0,
       teamAId: null,
       teamBId: null,
-      teamASource: "Gold Semi 1 W",
-      teamBSource: "Gold Semi 2 W",
+      teamASource: "準決賽 1 勝者",
+      teamBSource: "準決賽 2 勝者",
     },
-    ...(opts?.skipThirdPlace
+    ...(shape.skipThirdPlace
       ? []
       : [
           {
@@ -338,32 +387,36 @@ export function buildKnockoutShells(
             index: 0,
             teamAId: null,
             teamBId: null,
-            teamASource: "Gold Semi 1 L",
-            teamBSource: "Gold Semi 2 L",
+            teamASource: "準決賽 1 敗者",
+            teamBSource: "準決賽 2 敗者",
           },
         ]),
-    {
-      phase: "silver_final",
-      groupLabel: null,
-      index: 0,
-      teamAId: null,
-      teamBId: null,
-      teamASource: "Silver Semi 1 W",
-      teamBSource: "Silver Semi 2 W",
-    },
-    ...(opts?.skipSilverThirdPlace
-      ? []
-      : [
+    ...(shape.lowerBracket === "semis"
+      ? [
           {
-            phase: "silver_third_place" as const,
+            phase: "silver_final" as const,
             groupLabel: null,
             index: 0,
             teamAId: null,
             teamBId: null,
-            teamASource: "Silver Semi 1 L",
-            teamBSource: "Silver Semi 2 L",
+            teamASource: "5-8 準決賽 1 勝者",
+            teamBSource: "5-8 準決賽 2 勝者",
           },
-        ]),
+          ...(shape.skipSilverThirdPlace
+            ? []
+            : [
+                {
+                  phase: "silver_third_place" as const,
+                  groupLabel: null,
+                  index: 0,
+                  teamAId: null,
+                  teamBId: null,
+                  teamASource: "5-8 準決賽 1 敗者",
+                  teamBSource: "5-8 準決賽 2 敗者",
+                },
+              ]),
+        ]
+      : []),
   ];
 
   const out: ScheduledMatch[] = [];
@@ -397,23 +450,24 @@ export function buildFullSchedule(input: SchedulerInput): ScheduledTournament {
     lastGroupTime.getTime() + input.matchDurationMin * 60_000,
   );
   const knockoutMatches = buildKnockoutShells(
+    input.shape,
     knockoutStart,
     input.matchDurationMin,
     input.numCourts,
-    {
-      skipThirdPlace: input.skipThirdPlace,
-      skipSilverThirdPlace: input.skipSilverThirdPlace,
-    },
   );
   return { groupMatches, knockoutMatches };
 }
 
 /**
  * After group stage results are known, fill the semifinal matches (both
- * Gold and Silver brackets) with real team IDs. Final / silver_final /
+ * both brackets) with real team IDs. Final / silver_final /
  * third_place / silver_third_place stay TBD until their respective semis end.
  *
  * groupAStandings[0] = A1, [1] = A2, [2] = A3, [3] = A4 (same for B).
+ *
+ * A "single" lower bracket's 5-6 match is filled here too: it reads straight
+ * off the standings rather than waiting on a semi, which is the whole reason
+ * it's scheduled in the first knockout wave.
  */
 export function fillKnockoutTeams(
   knockout: ScheduledMatch[],
@@ -434,6 +488,13 @@ export function fillKnockoutTeams(
     }
     if (m.phase === "silver_semifinal" && m.teamASource === "B 組 #3") {
       return { ...m, teamAId: B[2] ?? null, teamBId: A[3] ?? null };
+    }
+    if (
+      m.phase === "silver_final" &&
+      m.teamASource === SILVER_DIRECT_SOURCE_A &&
+      m.teamBSource === SILVER_DIRECT_SOURCE_B
+    ) {
+      return { ...m, teamAId: A[2] ?? null, teamBId: B[2] ?? null };
     }
     return m;
   });

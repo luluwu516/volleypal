@@ -6,6 +6,7 @@ import {
   fillKnockoutTeams,
   SchedulerInput,
 } from "../lib/scheduler";
+import { tournamentShape } from "../lib/tournamentFormat";
 
 function makeInput(numCourts: number): SchedulerInput {
   return {
@@ -19,6 +20,24 @@ function makeInput(numCourts: number): SchedulerInput {
         groupLabel: "B" as const,
       })),
     ],
+    shape: tournamentShape({ numTeams: 8, groupRounds: 1 }),
+    numCourts,
+    matchDurationMin: 30,
+    startsAt: new Date("2026-06-01T09:00:00-07:00"),
+  };
+}
+
+/** Six teams, two groups of three — the emergency downsize. */
+function makeSixInput(
+  numCourts: number,
+  overrides: Partial<Parameters<typeof tournamentShape>[0]> = {},
+): SchedulerInput {
+  return {
+    teams: [
+      ...["a1", "a2", "a3"].map((id) => ({ id, groupLabel: "A" as const })),
+      ...["b1", "b2", "b3"].map((id) => ({ id, groupLabel: "B" as const })),
+    ],
+    shape: tournamentShape({ numTeams: 6, groupRounds: 1, ...overrides }),
     numCourts,
     matchDurationMin: 30,
     startsAt: new Date("2026-06-01T09:00:00-07:00"),
@@ -142,7 +161,7 @@ describe("scheduleGroupStage", () => {
     });
   });
 
-  it("throws if a group does not have 4 teams", () => {
+  it("throws if a group does not have the format's group size", () => {
     const bad: SchedulerInput = {
       ...makeInput(2),
       teams: [{ id: "a1", groupLabel: "A" }],
@@ -237,7 +256,7 @@ describe("buildFullSchedule + fillKnockoutTeams", () => {
   it("skipThirdPlace omits the Gold placement match only", () => {
     const { knockoutMatches } = buildFullSchedule({
       ...makeInput(2),
-      skipThirdPlace: true,
+      shape: tournamentShape({ numTeams: 8, groupRounds: 1, skipThirdPlace: true }),
     });
     const phases = knockoutMatches.map((m) => m.phase).sort();
     expect(phases).not.toContain("third_place");
@@ -251,7 +270,11 @@ describe("buildFullSchedule + fillKnockoutTeams", () => {
   it("skipSilverThirdPlace omits the Silver 7-8 match only", () => {
     const { knockoutMatches } = buildFullSchedule({
       ...makeInput(2),
-      skipSilverThirdPlace: true,
+      shape: tournamentShape({
+        numTeams: 8,
+        groupRounds: 1,
+        skipSilverThirdPlace: true,
+      }),
     });
     const phases = knockoutMatches.map((m) => m.phase);
     expect(phases).not.toContain("silver_third_place");
@@ -261,9 +284,137 @@ describe("buildFullSchedule + fillKnockoutTeams", () => {
   it("both skip flags → 6 knockout matches (2 semis + 2 semis + 2 finals)", () => {
     const { knockoutMatches } = buildFullSchedule({
       ...makeInput(2),
-      skipThirdPlace: true,
-      skipSilverThirdPlace: true,
+      shape: tournamentShape({
+        numTeams: 8,
+        groupRounds: 1,
+        skipThirdPlace: true,
+        skipSilverThirdPlace: true,
+      }),
     });
     expect(knockoutMatches).toHaveLength(6);
   });
 });
+
+describe("tournament shapes", () => {
+  it("不打銀盃 drops the whole lower bracket, keeps Gold intact", () => {
+    const { groupMatches, knockoutMatches } = buildFullSchedule({
+      ...makeInput(2),
+      shape: tournamentShape({
+        numTeams: 8,
+        groupRounds: 1,
+        skipSilverBracket: true,
+      }),
+    });
+    expect(groupMatches).toHaveLength(12);
+    // 2 semis + final + 3rd. Nothing silver at all — 5-8 stands on group
+    // record, which is what the standings table already shows.
+    expect(knockoutMatches).toHaveLength(4);
+    expect(
+      knockoutMatches.filter((m) => m.phase.startsWith("silver")),
+    ).toHaveLength(0);
+    expect(knockoutMatches.find((m) => m.phase === "final")).toBeDefined();
+    expect(knockoutMatches.find((m) => m.phase === "third_place")).toBeDefined();
+  });
+
+  it("6 teams: 6 group matches and a 5-6 game instead of silver semis", () => {
+    const { groupMatches, knockoutMatches } = buildFullSchedule(
+      makeSixInput(2),
+    );
+    expect(groupMatches).toHaveLength(6);
+    expect(groupMatches.filter((m) => m.groupLabel === "A")).toHaveLength(3);
+    expect(groupMatches.filter((m) => m.groupLabel === "B")).toHaveLength(3);
+    // 2 gold semis + final + 3rd + one 5-6 match.
+    expect(knockoutMatches).toHaveLength(5);
+    expect(
+      knockoutMatches.filter((m) => m.phase === "silver_semifinal"),
+    ).toHaveLength(0);
+    expect(
+      knockoutMatches.filter((m) => m.phase === "silver_third_place"),
+    ).toHaveLength(0);
+    const fiveSix = knockoutMatches.find((m) => m.phase === "silver_final");
+    expect(fiveSix).toBeDefined();
+    expect(fiveSix!.teamASource).toBe("A 組 #3");
+    expect(fiveSix!.teamBSource).toBe("B 組 #3");
+  });
+
+  it("the 6-team 5-6 game is scheduled in the first knockout wave", () => {
+    // It depends only on the group standings, so it must not be made to wait
+    // for the gold semis — that would idle a court and push the finals back.
+    const { knockoutMatches } = makeSixSchedule();
+    const semiTime = Math.min(
+      ...knockoutMatches
+        .filter((m) => m.phase === "semifinal")
+        .map((m) => m.scheduledAt.getTime()),
+    );
+    const finalTime = knockoutMatches.find(
+      (m) => m.phase === "final",
+    )!.scheduledAt.getTime();
+    const fiveSixTime = knockoutMatches.find(
+      (m) => m.phase === "silver_final",
+    )!.scheduledAt.getTime();
+    expect(fiveSixTime).toBeLessThan(finalTime);
+    expect(fiveSixTime).toBeGreaterThanOrEqual(semiTime);
+  });
+
+  it("fills the 6-team 5-6 game straight from the group standings", () => {
+    const { knockoutMatches } = makeSixSchedule();
+    const filled = fillKnockoutTeams(
+      knockoutMatches,
+      ["a1", "a2", "a3"],
+      ["b1", "b2", "b3"],
+    );
+    const fiveSix = filled.find((m) => m.phase === "silver_final")!;
+    expect(fiveSix.teamAId).toBe("a3");
+    expect(fiveSix.teamBId).toBe("b3");
+    // Gold still crosses over the same way it does with 8 teams.
+    const semi1 = filled.find((m) => m.teamASource === "A 組 #1")!;
+    expect(semi1.teamAId).toBe("a1");
+    expect(semi1.teamBId).toBe("b2");
+  });
+
+  it("skipSilverThirdPlace removes the 6-team 5-6 game", () => {
+    const { knockoutMatches } = buildFullSchedule({
+      ...makeSixInput(2, { skipSilverThirdPlace: true }),
+    });
+    expect(
+      knockoutMatches.filter((m) => m.phase === "silver_final"),
+    ).toHaveLength(0);
+    expect(knockoutMatches).toHaveLength(4);
+  });
+
+  it("double round-robin plays each group twice without repeating orientation", () => {
+    const { groupMatches } = buildFullSchedule(
+      makeSixInput(2, { groupRounds: 2 }),
+    );
+    expect(groupMatches).toHaveLength(12);
+    const a = groupMatches.filter((m) => m.groupLabel === "A");
+    expect(a).toHaveLength(6);
+    // Every unordered pair appears twice, and never twice the same way round.
+    const ordered = a.map((m) => `${m.teamAId}v${m.teamBId}`);
+    expect(new Set(ordered).size).toBe(6);
+    const unordered = a.map((m) =>
+      [m.teamAId, m.teamBId].sort().join("|"),
+    );
+    for (const pair of new Set(unordered)) {
+      expect(unordered.filter((p) => p === pair)).toHaveLength(2);
+    }
+  });
+
+  it("every team in a 6-team format plays every other in its group", () => {
+    const { groupMatches } = buildFullSchedule(makeSixInput(2));
+    const played = new Set(
+      groupMatches.map((m) => [m.teamAId, m.teamBId].sort().join("|")),
+    );
+    expect(played).toContain("a1|a2");
+    expect(played).toContain("a1|a3");
+    expect(played).toContain("a2|a3");
+    expect(played).toContain("b1|b2");
+    expect(played).toContain("b1|b3");
+    expect(played).toContain("b2|b3");
+    expect(played.size).toBe(6);
+  });
+});
+
+function makeSixSchedule() {
+  return buildFullSchedule(makeSixInput(2));
+}

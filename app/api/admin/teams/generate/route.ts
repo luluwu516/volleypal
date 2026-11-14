@@ -6,11 +6,13 @@ import { findAdminByPin } from "@/lib/auth/pin";
 import { tryRateLimit, clientIp } from "@/lib/rateLimit";
 import {
   buildTeamsForStrategy,
+  teamCountSupported,
   validatePlayersFor,
   SKILL_MIN,
   SKILL_MAX,
   type Player,
 } from "@/lib/teamBalancer";
+import { clampTeamCount } from "@/lib/tournamentFormat";
 import type { MbtiTypeCode } from "@/lib/db/types";
 
 const Body = z.object({
@@ -113,7 +115,7 @@ async function handleGenerate(req: Request) {
 
   const { data: tournament, error: tErr } = await db
     .from("tournaments")
-    .select("id, grouping_strategy")
+    .select("id, grouping_strategy, num_teams")
     .eq("id", tournamentId)
     .maybeSingle();
   if (tErr) {
@@ -130,6 +132,17 @@ async function handleGenerate(req: Request) {
     | "zodiac_mixed"
     | "mbti_together"
     | "mbti_mixed";
+  // Team count comes off the tournament setting, so the teams built here
+  // always fit the bracket that 產生賽程 will build from the same number.
+  const teamCount = clampTeamCount(tournament.num_teams);
+  if (!teamCountSupported(strategy, teamCount)) {
+    return NextResponse.json(
+      {
+        error: `目前設定為 ${teamCount} 隊,但這個分隊策略固定產生 8 隊。請改用「打散各星座象」或「打散各 MBTI 氣質」,或把隊伍數改回 8。`,
+      },
+      { status: 400 },
+    );
+  }
 
   // Only admin-confirmed active players enter team generation. Waitlisted
   // rows (both forms in but payment unverified) never touch team_members —
@@ -171,9 +184,9 @@ async function handleGenerate(req: Request) {
     mbti: (r.mbti ?? undefined) as MbtiTypeCode | undefined,
   }));
 
-  if (players.length < 8) {
+  if (players.length < teamCount) {
     return NextResponse.json(
-      { error: `已確認球員需 >= 8 (目前 ${players.length})` },
+      { error: `已確認球員需 >= ${teamCount} (目前 ${players.length})` },
       { status: 400 },
     );
   }
@@ -204,7 +217,7 @@ async function handleGenerate(req: Request) {
     }
   }
 
-  const result = buildTeamsForStrategy(strategy, players);
+  const result = buildTeamsForStrategy(strategy, players, { teamCount });
 
   // Pre-insert invariant check. Cheap to run and turns any future balancer
   // regression into a specific, actionable error instead of a downstream

@@ -1,4 +1,5 @@
 import { Element, elementFromBirthday, ELEMENT_LABELS_ZH } from "./zodiac";
+import { teamCountSupported as supportsCount } from "./tournamentFormat";
 import {
   type MbtiType,
   type Temperament,
@@ -393,9 +394,16 @@ function shufflePlayers(players: Player[], random: () => number): Player[] {
   return out;
 }
 
+export { teamCountSupported } from "./tournamentFormat";
+
 export interface StrategyOptions extends BalanceOptions {
   /** Deterministic RNG hook for tests. Defaults to Math.random. */
   random?: () => number;
+  /**
+   * How many teams to build. Only the `*_mixed` strategies honour it — see
+   * `teamCountSupported`. Defaults to 8.
+   */
+  teamCount?: number;
 }
 
 export function buildTeamsForStrategy(
@@ -404,6 +412,12 @@ export function buildTeamsForStrategy(
   options?: StrategyOptions,
 ): BuildResult {
   const shuffled = shufflePlayers(players, options?.random ?? Math.random);
+  const teamCount = options?.teamCount ?? 8;
+  if (!supportsCount(strategy, teamCount)) {
+    throw new Error(
+      `strategy ${strategy} cannot build ${teamCount} teams (fixed at 8)`,
+    );
+  }
   switch (strategy) {
     case "zodiac_together": {
       const teams = buildTogetherTeams<Element>(
@@ -420,6 +434,7 @@ export function buildTeamsForStrategy(
         shuffled,
         ELEMENTS,
         (p) => elementFromBirthday(p.birthday),
+        teamCount,
       );
       return { kind: "mixed", teams };
     }
@@ -438,6 +453,7 @@ export function buildTeamsForStrategy(
         shuffled,
         TEMPERAMENTS,
         (p) => MBTI_TO_TEMPERAMENT[p.mbti!],
+        teamCount,
       );
       return { kind: "mixed", teams };
     }

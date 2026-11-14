@@ -28,7 +28,7 @@ const STRATEGY_COPY: Record<
   zodiac_mixed: {
     label: "一鍵分隊(打散星座象)",
     describe:
-      "8 隊,每隊盡量各含火/土/風/水,並均衡性別、位置與實力。",
+      "每隊盡量各含火/土/風/水,並均衡性別、位置與實力。",
   },
   mbti_together: {
     label: "一鍵分隊(同 MBTI 氣質)",
@@ -38,25 +38,31 @@ const STRATEGY_COPY: Record<
   mbti_mixed: {
     label: "一鍵分隊(打散 MBTI 氣質)",
     describe:
-      "8 隊,每隊盡量各含不同氣質,並均衡性別、位置與實力。",
+      "每隊盡量各含不同氣質,並均衡性別、位置與實力。",
   },
 };
 
 // Common footnote appended to every strategy description so admins know the
-// generated names are placeholders and where to rename.
-const NAMING_HINT =
-  "隊名產生為「隊伍 1」…「隊伍 8」,比賽當天球員取名後在隊伍卡片上手動改。";
+// generated names are placeholders and where to rename. The count comes from
+// the tournament's format rather than being spelled 8, since the whole point
+// of the 6-team formats is that it isn't always 8.
+function namingHint(teamCount: number): string {
+  return `隊名產生為「隊伍 1」…「隊伍 ${teamCount}」,比賽當天球員取名後在隊伍卡片上手動改。`;
+}
 
 export function GenerateTeamsButton({
   tournamentId,
   existingCount,
   strategy,
+  teamCount,
   teamsPublicAt = null,
   disabled = false,
 }: {
   tournamentId: string;
   existingCount: number;
   strategy: GroupingStrategy;
+  /** How many teams the tournament's schedule format asks for. */
+  teamCount: number;
   teamsPublicAt?: string | null;
   disabled?: boolean;
 }) {
@@ -123,13 +129,17 @@ export function GenerateTeamsButton({
           <DialogDescription>
             {willReplace ? (
               <>
-                將刪除目前 {existingCount} 個隊伍並重新分隊(策略:{copy.label.replace("一鍵分隊", "").replace(/[()]/g, "")})。已建立的賽程也會被清空。
-                <span className="block mt-2 text-[11px]">{NAMING_HINT}</span>
+                將刪除目前 {existingCount} 個隊伍,重新分成 {teamCount} 隊(策略:{copy.label.replace("一鍵分隊", "").replace(/[()]/g, "")})。已建立的賽程也會被清空。
+                <span className="block mt-2 text-[11px]">
+                  {namingHint(teamCount)}
+                </span>
               </>
             ) : (
               <>
-                {copy.describe}
-                <span className="block mt-2 text-[11px]">{NAMING_HINT}</span>
+                分成 {teamCount} 隊,{copy.describe}
+                <span className="block mt-2 text-[11px]">
+                  {namingHint(teamCount)}
+                </span>
               </>
             )}
           </DialogDescription>

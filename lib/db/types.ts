@@ -46,6 +46,9 @@ export interface Tournament {
   registration_closes_at: string | null;
   match_day_date: string | null;
   grouping_strategy: GroupingStrategy;
+  /** Even, 4-16. Null only for a row predating the column — treat as 8. */
+  num_teams: number | null;
+  group_rounds: number | null;
   teams_public_at: string | null;
   num_courts: number;
   match_duration_min: number;
@@ -54,6 +57,7 @@ export interface Tournament {
   max_non_taiwanese: number;
   allow_player_broadcast: boolean;
   skip_third_place: boolean;
+  skip_silver_bracket: boolean;
   skip_silver_third_place: boolean;
   rules_doc_url: string | null;
   registration_form_url: string | null;

@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import type { TournamentShape } from "@/lib/tournamentFormat";
 
 interface Props {
   tournamentId: string;
@@ -21,6 +22,8 @@ interface Props {
   defaultDuration: number;
   existingCount: number;
   teamCount: number;
+  /** Derived from the tournament settings — says how many teams are required. */
+  shape: TournamentShape;
   disabled?: boolean;
 }
 
@@ -41,6 +44,7 @@ export function GenerateScheduleForm({
   defaultDuration,
   existingCount,
   teamCount,
+  shape,
   disabled = false,
 }: Props) {
   const router = useRouter();
@@ -93,8 +97,13 @@ export function GenerateScheduleForm({
   }
 
   async function run() {
-    if (teamCount !== 8) {
-      toast.error(`目前隊伍數為 ${teamCount}，需為 8 隊才能生成`);
+    // Required count comes from the format, not a constant: a 6-team format
+    // needs 6, and hardcoding 8 here blocked the emergency downsize at the
+    // last step even though everything behind it supported it.
+    if (teamCount !== shape.numTeams) {
+      toast.error(
+        `賽事設定為 ${shape.numTeams} 隊,目前是 ${teamCount} 隊。請先重新分隊,或到賽事設定改隊伍數。`,
+      );
       return;
     }
     await submit();

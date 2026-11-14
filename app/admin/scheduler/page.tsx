@@ -8,6 +8,7 @@ import { ScheduleList } from "@/components/admin/ScheduleList";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { getAdminSession } from "@/lib/auth/getSession";
+import { tournamentShape, describeShape } from "@/lib/tournamentFormat";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,23 @@ export default async function SchedulerPage() {
     listMatches(tournament.id),
     listTeams(tournament.id),
   ]);
+  const shape = tournamentShape({
+    numTeams: tournament.num_teams ?? 8,
+    groupRounds: tournament.group_rounds ?? 1,
+    skipThirdPlace: tournament.skip_third_place,
+    skipSilverBracket: tournament.skip_silver_bracket,
+    skipSilverThirdPlace: tournament.skip_silver_third_place,
+  });
   return (
     <div className="flex flex-col gap-4">
       {locked && <LockedBanner />}
       <h1 className="text-xl font-bold">賽程</h1>
       <p className="text-xs text-muted-foreground">
-        現有 {matches.length} 場比賽 · {teams.length} 個隊伍
+        現有 {matches.length} 場比賽 · {teams.length} 個隊伍 · 設定為{" "}
+        {shape.numTeams} 隊共 {shape.totalMatches} 場
+      </p>
+      <p className="text-[11px] text-muted-foreground -mt-2">
+        {describeShape(shape)}
       </p>
       <GenerateScheduleForm
         tournamentId={tournament.id}
@@ -45,6 +57,7 @@ export default async function SchedulerPage() {
         defaultDuration={tournament.match_duration_min}
         existingCount={matches.length}
         teamCount={teams.length}
+        shape={shape}
         disabled={locked}
       />
 

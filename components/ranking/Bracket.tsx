@@ -139,18 +139,29 @@ function BracketSection({
     : [];
 
   return (
-    <div className="grid grid-cols-2 gap-3 items-center">
-      <div className="flex flex-col gap-3">
-        {semis.map((m, i) => (
-          <MatchCard
-            key={m.id}
-            m={m}
-            teams={teams}
-            title={`Semi ${i + 1}`}
-            accent={accent}
-          />
-        ))}
-      </div>
+    // A lower bracket with no semis (6-team formats decide 5-6 in one match
+    // straight off the group standings) would leave the semis column as an
+    // empty half, so that case goes single-column instead.
+    <div
+      className={
+        semis.length === 0
+          ? "flex flex-col gap-3"
+          : "grid grid-cols-2 gap-3 items-center"
+      }
+    >
+      {semis.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {semis.map((m, i) => (
+            <MatchCard
+              key={m.id}
+              m={m}
+              teams={teams}
+              title={`Semi ${i + 1}`}
+              accent={accent}
+            />
+          ))}
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         {final && (
           <MatchCard m={final} teams={teams} title={finalTitle} accent={accent} />
@@ -228,6 +239,7 @@ export function Bracket({ matches, teams }: Props) {
       m.phase,
     ),
   );
+  const hasSilverSemis = matches.some((m) => m.phase === "silver_semifinal");
 
   if (!hasGold && !hasSilver) {
     return (
@@ -242,7 +254,7 @@ export function Bracket({ matches, teams }: Props) {
       {hasGold && (
         <section>
           <h3 className="text-sm font-semibold mb-2 text-amber-300">
-            🥇 Gold (1-4 名)
+            🥇 爭冠組（1-4 名）
           </h3>
           <BracketSection
             matches={matches}
@@ -259,8 +271,13 @@ export function Bracket({ matches, teams }: Props) {
       )}
       {hasSilver && (
         <section>
+          {/* Heading follows the bracket that's actually there: groups of 4+
+              run a full 5-8 playoff, groups of 3 a single 5-6 game. Naming it
+              「5-8 名」over one match would have players looking for teams
+              that don't exist. Named by places rather than by "Silver", which
+              is recreational-tournament jargon these players don't use. */}
           <h3 className="text-sm font-semibold mb-2 text-purple-300">
-            🥈 Silver (5-8 名)
+            {hasSilverSemis ? "🏅 5-8 名排位賽" : "🏅 5-6 名"}
           </h3>
           <BracketSection
             matches={matches}

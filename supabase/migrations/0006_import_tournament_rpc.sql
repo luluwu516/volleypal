@@ -17,8 +17,11 @@ language plpgsql
 as $$
 declare
   tid uuid;
+  t jsonb;
+  base tournaments;
 begin
-  tid := (payload->'tournament'->>'id')::uuid;
+  t := payload->'tournament';
+  tid := (t->>'id')::uuid;
   if tid is null then
     raise exception 'payload missing tournament.id';
   end if;
@@ -34,8 +37,36 @@ begin
   -- table survives planning while matching every row.
   delete from tournaments where id in (select id from tournaments);
 
+  -- Lay the backup over a row of column DEFAULTS rather than over nothing.
+  --
+  -- jsonb_populate_record fills any column the JSON has no key for from its
+  -- `base` argument, and with NULL when base is NULL. So with a NULL base,
+  -- every backup taken before a column existed hands NULL to that column —
+  -- and a NOT NULL column rejects it, failing the entire import. That is not
+  -- hypothetical: every backup on disk predates num_teams / group_rounds /
+  -- skip_silver_bracket, and the oldest predates skip_third_place and
+  -- grouping_strategy too.
+  --
+  -- Capturing the defaults means inserting a stub and reading it back, since
+  -- Postgres won't hand you a table's default row any other way. The stub
+  -- supplies only the columns that are NOT NULL with no default (name, year,
+  -- mode) and is deleted immediately; nothing references it yet because the
+  -- wipe above left the table empty and the children are inserted below.
+  --
+  -- Net effect: an older backup restores with today's defaults for whatever
+  -- it predates, instead of refusing to restore at all.
+  insert into tournaments (id, name, year, mode)
+  values (
+    tid,
+    coalesce(t->>'name', 'restored'),
+    coalesce((t->>'year')::int, extract(year from now())::int),
+    coalesce((t->>'mode')::tournament_mode, 'zodiac')
+  )
+  returning * into base;
+  delete from tournaments where id = tid;
+
   insert into tournaments
-    select * from jsonb_populate_record(null::tournaments, payload->'tournament');
+    select * from jsonb_populate_record(base, t);
 
   insert into registrations
     select * from jsonb_populate_recordset(

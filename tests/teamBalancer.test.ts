@@ -7,6 +7,7 @@ import {
   buildTeamsForStrategy,
   buildMixedTeams,
   imbalance,
+  teamCountSupported,
 } from "../lib/teamBalancer";
 import { elementFromBirthday } from "../lib/zodiac";
 import { MBTI_TO_TEMPERAMENT, TEMPERAMENTS } from "../lib/mbti";
@@ -457,5 +458,73 @@ describe("skill scale", () => {
         8,
       );
     expect(spread(build(6))).toBeCloseTo(spread(build(0)), 10);
+  });
+});
+
+describe("team count (emergency downsize to 6 teams)", () => {
+  // Spread birthdays across all four elements and give every player an MBTI
+  // so one roster can exercise every strategy.
+  const MONTHS = ["01-20", "04-20", "07-20", "10-20"];
+  const MBTIS: MbtiTypeCode[] = ["INFP", "INTJ", "ISTJ", "ESTP"];
+  function roster(n: number): Player[] {
+    return Array.from({ length: n }, (_, i) =>
+      makePlayer(String(i + 1), `2000-${MONTHS[i % 4]}`, {
+        mbti: MBTIS[i % 4],
+        skill: (i % 10) + 1,
+      }),
+    );
+  }
+
+  it("teamCountSupported: mixed takes any count, together is pinned to 8", () => {
+    // The together strategies bucket into 4 attributes and halve each bucket,
+    // so 8 isn't a default there — it's the only count the shape can express.
+    for (const n of [2, 4, 6, 8, 10]) {
+      expect(teamCountSupported("zodiac_mixed", n)).toBe(true);
+      expect(teamCountSupported("mbti_mixed", n)).toBe(true);
+      expect(teamCountSupported("zodiac_together", n)).toBe(n === 8);
+      expect(teamCountSupported("mbti_together", n)).toBe(n === 8);
+    }
+  });
+
+  it("mixed strategies build exactly the requested number of teams", () => {
+    for (const strategy of ["zodiac_mixed", "mbti_mixed"] as const) {
+      for (const teamCount of [6, 8]) {
+        const result = buildTeamsForStrategy(strategy, roster(48), {
+          teamCount,
+        });
+        expect(result.teams).toHaveLength(teamCount);
+      }
+    }
+  });
+
+  it("downsizing to 6 teams loses nobody and leaves no team empty", () => {
+    // The whole point of the 6-team formats is a roster that showed up short,
+    // so the headcount has to survive the regroup exactly.
+    const players = roster(42);
+    const result = buildTeamsForStrategy("zodiac_mixed", players, {
+      teamCount: 6,
+    });
+    const ids = result.teams.flatMap((t) => t.members.map((p) => p.id));
+    expect(new Set(ids).size).toBe(players.length);
+    expect(ids).toHaveLength(players.length);
+    result.teams.forEach((t) => expect(t.members.length).toBeGreaterThan(0));
+    const sizes = result.teams.map((t) => t.members.length);
+    expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
+  });
+
+  it("together strategies refuse a count they cannot express", () => {
+    // Better here than silently returning 8 teams for a 6-team bracket: the
+    // schedule would then refuse to generate, and only at the venue.
+    expect(() =>
+      buildTeamsForStrategy("zodiac_together", roster(48), { teamCount: 6 }),
+    ).toThrow(/6 teams/);
+    expect(() =>
+      buildTeamsForStrategy("mbti_together", roster(48), { teamCount: 6 }),
+    ).toThrow();
+  });
+
+  it("defaults to 8 teams when no count is given", () => {
+    const result = buildTeamsForStrategy("zodiac_mixed", roster(48));
+    expect(result.teams).toHaveLength(8);
   });
 });

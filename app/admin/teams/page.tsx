@@ -12,6 +12,7 @@ import { PendingWaiverList } from "./_components/PendingWaiverList";
 import { TeamsBoard } from "./_components/TeamsBoard";
 import { UnassignedPlayers } from "./_components/UnassignedPlayers";
 import { SkillStoreProvider } from "./_components/SkillStore";
+import { clampTeamCount } from "@/lib/tournamentFormat";
 import { LockedBanner } from "@/components/LockedBanner";
 import { EmptyState } from "@/components/EmptyState";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -60,8 +61,9 @@ export default async function TeamsPage() {
       teams.map((t) => t.id),
     );
 
+  const numTeams = clampTeamCount(tournament.num_teams);
   const activeCount = registrations.filter((r) => r.is_active).length;
-  const canGenerate = activeCount >= 8;
+  const canGenerate = activeCount >= numTeams;
   // Confirmed players with no seat. Produced by the replacement flow: 退回候補
   // frees a seat, and the waitlisted player confirmed into it arrives with no
   // team of their own. Nothing else on the page would show them.
@@ -84,7 +86,8 @@ export default async function TeamsPage() {
       <header>
         <h1 className="text-xl font-bold">分隊</h1>
         <p className="text-xs text-muted-foreground">
-          已確認 {activeCount} · 隊伍 {teams.length} · 策略 {strategyLabel}
+          已確認 {activeCount} · 隊伍 {teams.length} · 策略 {strategyLabel} ·
+          設定 {numTeams} 隊
         </p>
       </header>
 
@@ -159,12 +162,13 @@ export default async function TeamsPage() {
           tournamentId={tournament.id}
           existingCount={teams.length}
           strategy={tournament.grouping_strategy}
+          teamCount={numTeams}
           teamsPublicAt={tournament.teams_public_at}
           disabled={locked}
         />
         {!canGenerate && (
           <p className="text-xs text-amber-400 text-center">
-            ⚠ 需 ≥ 8 位已確認球員才能分隊（目前 {activeCount}）
+            ⚠ 需 ≥ {numTeams} 位已確認球員才能分隊（目前 {activeCount}）
           </p>
         )}
         {teams.length > 0 && (
