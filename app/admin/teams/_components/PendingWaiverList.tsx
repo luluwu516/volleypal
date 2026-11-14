@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { PinConfirmDialog } from "@/components/admin/PinConfirmDialog";
 
 const TZ = process.env.NEXT_PUBLIC_APP_TZ || "America/Los_Angeles";
 
@@ -69,7 +70,9 @@ function PendingRow({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [, startTransition] = useTransition();
+  const label = pending.name ?? pending.email ?? "此筆";
 
   const candidates = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -115,26 +118,19 @@ function PendingRow({
     }
   }
 
-  async function discard() {
-    if (!confirm(`確定刪除 ${pending.name ?? pending.email ?? "此筆"} 的未配對 waiver?`)) {
-      return;
+  async function discard(pin: string) {
+    const res = await fetch(`/api/admin/pending-waiver/${pending.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(j.error ?? `HTTP ${res.status}`);
     }
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/pending-waiver/${pending.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j.error ?? `HTTP ${res.status}`);
-      }
-      toast.success("已刪除");
-      startTransition(() => router.refresh());
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+    toast.success("已刪除");
+    setConfirmingDelete(false);
+    startTransition(() => router.refresh());
   }
 
   return (
@@ -217,13 +213,20 @@ function PendingRow({
         <Button
           size="sm"
           variant="ghost"
-          onClick={discard}
+          onClick={() => setConfirmingDelete(true)}
           disabled={disabled || busy}
           className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
         >
           刪除
         </Button>
       </div>
+      <PinConfirmDialog
+        open={confirmingDelete}
+        title={`刪除 ${label} 的未配對 waiver?`}
+        description="此操作無法還原 — 這是系統裡唯一一份這筆簽署紀錄。只要不確定是誰的,就改用「配對到…」,簽署會留著。輸入你登入的 PIN 以確認刪除。"
+        onClose={() => setConfirmingDelete(false)}
+        onConfirm={discard}
+      />
     </li>
   );
 }

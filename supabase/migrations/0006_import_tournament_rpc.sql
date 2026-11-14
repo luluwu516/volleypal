@@ -4,7 +4,9 @@
 -- half-imported state.
 --
 -- Payload shape matches /api/admin/export output: { tournament, teams,
--- team_members, matches, match_sets, registrations, announcements }.
+-- team_members, matches, match_sets, registrations, announcements,
+-- pending_waivers }. Every list is coalesced to '[]', so a backup taken
+-- before a table joined the export still imports — it just restores none.
 -- jsonb_populate_record{,set} silently ignores keys that don't match a
 -- column, so `updated_at` and any legacy fields pass through harmlessly.
 --
@@ -71,6 +73,14 @@ begin
       coalesce(payload->'announcements', '[]'::jsonb)
     );
 
+  -- Orphan waivers: signatures not yet credited to a registration. They only
+  -- reference tournaments, so they can land any time after the wipe.
+  insert into pending_waivers
+    select * from jsonb_populate_recordset(
+      null::pending_waivers,
+      coalesce(payload->'pending_waivers', '[]'::jsonb)
+    );
+
   return jsonb_build_object(
     'tournament_id', tid,
     'counts', jsonb_build_object(
@@ -79,7 +89,8 @@ begin
       'team_members', jsonb_array_length(coalesce(payload->'team_members', '[]'::jsonb)),
       'matches', jsonb_array_length(coalesce(payload->'matches', '[]'::jsonb)),
       'match_sets', jsonb_array_length(coalesce(payload->'match_sets', '[]'::jsonb)),
-      'announcements', jsonb_array_length(coalesce(payload->'announcements', '[]'::jsonb))
+      'announcements', jsonb_array_length(coalesce(payload->'announcements', '[]'::jsonb)),
+      'pending_waivers', jsonb_array_length(coalesce(payload->'pending_waivers', '[]'::jsonb))
     )
   );
 end;

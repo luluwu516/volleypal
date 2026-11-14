@@ -51,6 +51,7 @@ export async function GET(req: Request) {
     matchSets,
     registrations,
     announcements,
+    pendingWaivers,
   ] = await Promise.all([
     db.from("teams").select("*").eq("tournament_id", tid),
     // team_members has no tournament_id; join through teams via .in()
@@ -67,6 +68,12 @@ export async function GET(req: Request) {
     }),
     db.from("registrations").select("*").eq("tournament_id", tid),
     db.from("announcements").select("*").eq("tournament_id", tid),
+    // Orphan waivers are in the backup because they're the ONLY record the app
+    // holds of a signature that hasn't been credited to anyone yet, and the
+    // admin UI can delete one with a single tap. One got mis-tapped away on a
+    // phone and nothing could recover it — the player simply vanished from
+    // the system. Cheap row, un-reconstructable content.
+    db.from("pending_waivers").select("*").eq("tournament_id", tid),
   ]);
 
   const payload = {
@@ -79,6 +86,7 @@ export async function GET(req: Request) {
     match_sets: matchSets.data ?? [],
     registrations: registrations.data ?? [],
     announcements: announcements.data ?? [],
+    pending_waivers: pendingWaivers.data ?? [],
   };
 
   // Date, not tournament.year: every backup taken during a tournament would

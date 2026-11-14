@@ -27,6 +27,9 @@ const Body = z.object({
     match_sets: z.array(z.record(z.string(), z.unknown())).default([]),
     registrations: z.array(z.record(z.string(), z.unknown())).default([]),
     announcements: z.array(z.record(z.string(), z.unknown())).default([]),
+    // Defaulted like the rest, which also keeps backups taken before orphan
+    // waivers were exported importable — they just restore none.
+    pending_waivers: z.array(z.record(z.string(), z.unknown())).default([]),
   }),
 });
 
@@ -73,8 +76,16 @@ export async function POST(req: Request) {
     // Build the same shape /api/admin/export produces so the backup can be
     // fed straight back through /api/admin/import.
     const tid = existingTournaments![0].id;
-    const [tRow, teamsRes, membersRes, matchesRes, setsRes, regsRes, annRes] =
-      await Promise.all([
+    const [
+      tRow,
+      teamsRes,
+      membersRes,
+      matchesRes,
+      setsRes,
+      regsRes,
+      annRes,
+      pendingRes,
+    ] = await Promise.all([
         db.from("tournaments").select("*").eq("id", tid).maybeSingle(),
         db.from("teams").select("*").eq("tournament_id", tid),
         db
@@ -98,6 +109,7 @@ export async function POST(req: Request) {
           }),
         db.from("registrations").select("*").eq("tournament_id", tid),
         db.from("announcements").select("*").eq("tournament_id", tid),
+        db.from("pending_waivers").select("*").eq("tournament_id", tid),
       ]);
     const snapshot = {
       snapshotted_at: new Date().toISOString(),
@@ -108,6 +120,7 @@ export async function POST(req: Request) {
       match_sets: setsRes.data ?? [],
       registrations: regsRes.data ?? [],
       announcements: annRes.data ?? [],
+      pending_waivers: pendingRes.data ?? [],
     };
     const { error: backupErr } = await db.from("import_backups").insert({
       created_by: sess.adminId,
